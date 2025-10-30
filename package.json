@@ -1,0 +1,29 @@
+{
+  "name": "kuaidi-app",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "db:migrate": "node scripts/migrate.js"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "@supabase/supabase-js": "^2.76.1",
+    "@vee-validate/i18n": "^4.15.1",
+    "@vee-validate/rules": "^4.15.1",
+    "axios": "^1.12.2",
+    "element-plus": "^2.11.5",
+    "pinia": "^2.0.0",
+    "vee-validate": "^4.15.1",
+    "vue": "^3.3.0",
+    "vue-router": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@vitejs/plugin-vue": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}

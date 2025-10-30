@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>样式测试</title>
+    <style>
+        .test-input {
+            border-radius: 12px;
+            border: 1px solid rgba(74, 144, 226, 0.3);
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            padding: 12px 16px;
+            font-size: 14px;
+            outline: none;
+            width: 300px;
+            margin: 20px;
+        }
+        
+        .test-input:focus {
+            border-color: #4A90E2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-1px);
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 70%, #4A90E2 100%);
+            padding: 50px;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>样式测试页面</h2>
+        <p>如果这个输入框有圆角和蓝色边框，说明样式是正常的：</p>
+        <input type="text" class="test-input" placeholder="测试输入框">
+        <p>现在请访问：<strong>http://localhost:5173/publish</strong></p>
+    </div>
+</body>
+</html>
