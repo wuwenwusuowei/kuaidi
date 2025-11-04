@@ -59,11 +59,17 @@ BEGIN
         )
         SELECT COUNT(*) INTO deleted_sessions FROM deleted_sess;
         
-        -- 记录清理日志
-        INSERT INTO system_logs (action, description) VALUES (
-            'chat_cleanup_immediate',
-            '订单 ' || NEW.id || ' 完成，立即清理了 ' || deleted_messages || ' 条消息和 ' || deleted_sessions || ' 个会话'
-        );
+        -- 记录清理日志（如果 system_logs 表存在）
+        BEGIN
+            INSERT INTO system_logs (action, description) VALUES (
+                'chat_cleanup_immediate',
+                '订单 ' || NEW.id || ' 完成，立即清理了 ' || deleted_messages || ' 条消息和 ' || deleted_sessions || ' 个会话'
+            );
+        EXCEPTION
+            WHEN undefined_table THEN
+                -- 如果 system_logs 表不存在，忽略错误
+                NULL;
+        END;
     END IF;
     
     RETURN NEW;

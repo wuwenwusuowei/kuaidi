@@ -205,3 +205,18 @@ ALTER TABLE orders DISABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews DISABLE ROW LEVEL SECURITY;
 ALTER TABLE messages DISABLE ROW LEVEL SECURITY;
+
+-- 系统日志表（用于记录操作日志）
+CREATE TABLE system_logs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    action VARCHAR(100) NOT NULL, -- 操作类型
+    description TEXT, -- 操作描述
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- 操作用户（可选）
+    order_id UUID REFERENCES orders(id) ON DELETE SET NULL, -- 相关订单（可选）
+    ip_address INET, -- 操作IP地址
+    user_agent TEXT, -- 用户代理信息
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 为系统日志表禁用RLS
+ALTER TABLE system_logs DISABLE ROW LEVEL SECURITY;

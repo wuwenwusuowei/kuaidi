@@ -29,7 +29,7 @@ DatabaseService.initialize().then(isConnected => {
   
   // 初始化认证状态
   const authStore = useAuthStore()
-  authStore.checkAuth()
+  authStore.initAuth()
   
   app.mount('#app')
 })

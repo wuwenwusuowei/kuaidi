@@ -7,6 +7,7 @@ import { ChatService } from '../services/chatService'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const isAuthenticated = ref(false)
+  const isAdmin = ref(false)
   const loading = ref(false)
 
   // 模拟用户数据（开发阶段备用）
@@ -155,7 +156,9 @@ export const useAuthStore = defineStore('auth', () => {
     
     user.value = null
     isAuthenticated.value = false
+    isAdmin.value = false
     localStorage.removeItem('auth_user')
+    localStorage.removeItem('is_admin')
   }
 
   // 更新用户信息
@@ -171,15 +174,42 @@ export const useAuthStore = defineStore('auth', () => {
     updateUser(userInfo)
   }
 
+  // 管理员权限管理
+  const setAdmin = (admin: boolean) => {
+    isAdmin.value = admin
+    if (admin) {
+      localStorage.setItem('is_admin', 'true')
+    } else {
+      localStorage.removeItem('is_admin')
+    }
+  }
+
+  // 检查管理员权限
+  const checkAdmin = () => {
+    const savedAdmin = localStorage.getItem('is_admin')
+    isAdmin.value = savedAdmin === 'true'
+    return isAdmin.value
+  }
+
+  // 初始化时检查管理员权限
+  const initAuth = () => {
+    checkAuth()
+    checkAdmin()
+  }
+
   return {
     user,
     isAuthenticated,
+    isAdmin,
     loading,
     login,
     register,
     logout,
     checkAuth,
     updateUser,
-    updateUserInfo
+    updateUserInfo,
+    setAdmin,
+    checkAdmin,
+    initAuth
   }
 })

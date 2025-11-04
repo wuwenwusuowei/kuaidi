@@ -10,6 +10,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "v0/OrderManagement2.vue", "v0/OrderManagement.vue", "v0/OrderManagement3.vue", "v0/OrderManagement4.vue"],
   "exclude": ["node_modules"]
 }
