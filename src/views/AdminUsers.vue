@@ -67,9 +67,9 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="last_login" label="最后登录" width="160">
+        <el-table-column prop="created_at" label="活跃状态" width="160">
           <template #default="{ row }">
-            {{ row.last_login ? formatDate(row.last_login) : '从未登录' }}
+            {{ getActiveStatus(row.created_at) }}
           </template>
         </el-table-column>
         
@@ -121,7 +121,7 @@
             <p><strong>邮箱：</strong>{{ selectedUser.email }}</p>
             <p><strong>手机号：</strong>{{ selectedUser.phone || '未设置' }}</p>
             <p><strong>注册时间：</strong>{{ formatDate(selectedUser.created_at) }}</p>
-            <p><strong>最后登录：</strong>{{ selectedUser.last_login ? formatDate(selectedUser.last_login) : '从未登录' }}</p>
+            <p><strong>活跃状态：</strong>{{ getActiveStatus(selectedUser.created_at) }}</p>
             <p><strong>状态：</strong>
               <el-tag :type="selectedUser.status === 'active' ? 'success' : 'danger'">
                 {{ selectedUser.status === 'active' ? '活跃' : '已封禁' }}
@@ -198,9 +198,13 @@ const loadUsers = async () => {
     userList.value = result.users
     total.value = result.total
     
-    // 应用状态筛选
+    // 应用状态筛选（由于数据库中没有status字段，这里使用活跃状态进行筛选）
     if (filterStatus.value) {
-      userList.value = userList.value.filter(user => user.status === filterStatus.value)
+      if (filterStatus.value === 'active') {
+        userList.value = userList.value.filter(user => getActiveStatus(user.created_at) === '活跃')
+      } else if (filterStatus.value === 'suspended') {
+        userList.value = userList.value.filter(user => getActiveStatus(user.created_at) === '不活跃')
+      }
     }
   } catch (error) {
     console.error('加载用户列表失败:', error)
@@ -295,6 +299,20 @@ const formatDate = (dateString: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// 获取活跃状态
+const getActiveStatus = (createdAt: string) => {
+  if (!createdAt) return '未知'
+  
+  const createdDate = new Date(createdAt)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  
+  if (createdDate > thirtyDaysAgo) {
+    return '活跃'
+  } else {
+    return '不活跃'
+  }
 }
 
 // 初始化加载

@@ -35,11 +35,6 @@
           <el-icon><Setting /></el-icon>
           <span>系统设置</span>
         </el-menu-item>
-        
-        <el-menu-item index="/admin/settings">
-          <el-icon><Setting /></el-icon>
-          <span>系统设置</span>
-        </el-menu-item>
       </el-menu>
       
       <div class="sidebar-footer">

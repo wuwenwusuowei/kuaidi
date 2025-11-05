@@ -4,7 +4,7 @@ import Home from '../views/Home.vue'
 import About from '../views/About.vue'
 import PublishOrder from '../views/PublishOrder.vue'
 import TaskHall from '../views/TaskHall.vue'
-import OrderManagement5 from '../views/OrderManagement5.vue'
+import OrderManagement from '../views/OrderManagement.vue'
 import PaymentSettings from '../views/PaymentSettings.vue'
 import HelpGuide from '../views/HelpGuide.vue'
 import Profile from '../views/Profile.vue'
@@ -14,7 +14,6 @@ import AdminDashboard from '../views/AdminDashboard.vue'
 import AdminUsers from '../views/AdminUsers.vue'
 import AdminOrders from '../views/AdminOrders.vue'
 import AdminSettings from '../views/AdminSettings.vue'
-import AdminSettings from '../views/AdminSettings.vue'
 
 const routes = [
   { path: '/', name: 'Login', component: Login },
@@ -22,7 +21,7 @@ const routes = [
   { path: '/about', name: 'About', component: About },
   { path: '/publish', name: 'PublishOrder', component: PublishOrder },
   { path: '/task-hall', name: 'TaskHall', component: TaskHall },
-  { path: '/orders', name: 'OrderManagement', component: OrderManagement5 },
+  { path: '/orders', name: 'OrderManagement', component: OrderManagement },
   { path: '/payment-settings', name: 'PaymentSettings', component: PaymentSettings },
   { path: '/help', name: 'HelpGuide', component: HelpGuide },
   { path: '/profile', name: 'Profile', component: Profile },
