@@ -101,14 +101,14 @@
         </div>
 
         <!-- Empty state -->
-        <div v-else-if="filteredOrders.length === 0" class="empty-state">
+        <div v-else-if="pagedOrders.length === 0" class="empty-state">
           <el-empty :description="emptyDescription" />
         </div>
 
         <!-- Order items -->
         <div v-else class="order-items">
           <div 
-            v-for="order in filteredOrders" 
+            v-for="order in pagedOrders" 
             :key="order.id"
             class="order-card"
           >
@@ -153,14 +153,6 @@
               </div>
 
               <div class="order-actions">
-                <el-button 
-                  v-if="order.status === 'pending'"
-                  type="primary" 
-                  size="small"
-                  @click="editOrder(order)"
-                >
-                  编辑
-                </el-button>
                 <el-button 
                   v-if="order.status === 'pending'"
                   type="danger" 
@@ -244,6 +236,21 @@
                 </el-button>
               </div>
             </div>
+          </div>
+        </div>
+        
+        <!-- 分页 -->
+        <div v-if="filteredOrders.length > pageSize" class="pagination-container">
+          <div class="pagination">
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[2]"
+              :total="filteredOrders.length"
+              layout="prev, pager, next"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
           </div>
         </div>
       </div>
@@ -439,6 +446,19 @@ const paymentQRCodeLoading = ref(false)
 const paymentTimer = ref<NodeJS.Timeout | null>(null)
 const delivererInfoCache = reactive<Record<string, string>>({})
 
+// 分页相关变量
+const currentPage = ref(1)
+const pageSize = ref(2) // 默认每页显示2个订单
+
+// 分页数据计算
+const pagedOrders = computed(() => {
+  if (filteredOrders.value.length === 0) return []
+  
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  return filteredOrders.value.slice(startIndex, endIndex)
+})
+
 const filteredOrders = computed(() => {
   let filtered = orders.value
   
@@ -538,6 +558,18 @@ const goBack = () => {
 const filterOrders = () => {}
 
 const filterOrdersByDate = () => {}
+
+// 分页相关方法
+const handleSizeChange = (newSize: number) => {
+  pageSize.value = newSize
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (newPage: number) => {
+  currentPage.value = newPage
+  // 滚动到顶部
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 const showOrderDetail = (order: Order) => {
   selectedOrder.value = order
@@ -666,7 +698,7 @@ const handlePayment = async (order: Order) => {
 
     const loadPaymentInfo = async () => {
       try {
-        const paymentInfoResult = await UserPaymentService.getUserPaymentInfo(order.delivererId)
+        const paymentInfoResult = await UserPaymentService.getUserPaymentInfo(order.delivererId || '')
         if (!paymentInfoResult.success) {
           ElMessage.error('获取接单人支付信息失败：' + (paymentInfoResult.error || '网络错误'))
           paymentDialogVisible.value = false
@@ -696,8 +728,8 @@ const handlePayment = async (order: Order) => {
         const [paymentResult, statusResult] = await Promise.all([
           PaymentService.createPayment(
             order.id,
-            authStore.user.id,
-            order.delivererId,
+            authStore.user?.id || '',
+            order.delivererId || '',
             order.price
           ),
           orderStore.updateOrderStatus(order.id, 'awaiting_payment')
@@ -904,9 +936,9 @@ const viewDetails = (order: Order) => {
 .order-management-container {
   min-height: 100vh;
   background: linear-gradient(135deg, 
-    #0a2e26 0%, 
-    #1a4d3a 30%, 
-    #0d3d2e 70%, 
+    #0a0a2a 0%, 
+    #1a1a4a 30%, 
+    #2a2a6a 70%, 
     #4A90E2 100%);
   position: relative;
   overflow: hidden;
@@ -915,7 +947,7 @@ const viewDetails = (order: Order) => {
 
 /* Starry background matching Homepage and PublishOrder */
 .starry-background {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -931,7 +963,7 @@ const viewDetails = (order: Order) => {
   height: 100%;
   background: linear-gradient(135deg, 
     rgba(74, 144, 226, 0.3) 0%, 
-    rgba(255, 126, 130, 0.2) 50%, 
+    rgba(52, 152, 219, 0.2) 50%, 
     rgba(255, 255, 255, 0.1) 100%);
 }
 
@@ -957,7 +989,7 @@ const viewDetails = (order: Order) => {
 
 /* Aurora Borealis Effect - Static flowing ethereal light formations */
 .aurora-container {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -1117,7 +1149,7 @@ const viewDetails = (order: Order) => {
     transparent 100%
   );
   filter: blur(26px);
-  transform: translateY(-3px) rotate(15deg) skewX(-6deg) scaleX(1.15);
+  transform: translateY(-3px) rotate(25deg) skewX(-6deg) scaleX(1.15);
   box-shadow: 
     0 0 70px rgba(139, 195, 74, 0.2),
     0 0 140px rgba(139, 195, 74, 0.1);
@@ -1557,5 +1589,97 @@ const viewDetails = (order: Order) => {
   :deep(.el-button) {
     width: 100%;
   }
+}
+
+/* 分页样式 */
+.pagination-container {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.pagination {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.el-pagination) {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+:deep(.el-pagination__total) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+:deep(.el-pagination__jump) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+:deep(.el-pagination__sizes) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+:deep(.el-pagination button) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+:deep(.el-pagination button:hover) {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+:deep(.el-pagination button:disabled) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+:deep(.el-pagination .btn-prev),
+:deep(.el-pagination .btn-next) {
+  background: rgba(74, 144, 226, 0.2) !important;
+  border-color: rgba(74, 144, 226, 0.3) !important;
+}
+
+:deep(.el-pagination .btn-prev:hover),
+:deep(.el-pagination .btn-next:hover) {
+  background: rgba(74, 144, 226, 0.3) !important;
+  border-color: rgba(74, 144, 226, 0.5) !important;
+}
+
+:deep(.el-pagination .number) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.el-pagination .number:hover) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+:deep(.el-pagination .number.active) {
+  background: linear-gradient(135deg, #4A90E2, #6BA8E9) !important;
+  border-color: rgba(74, 144, 226, 0.6) !important;
+  color: white !important;
+}
+
+:deep(.el-pagination .el-select .el-input .el-input__inner) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+:deep(.el-pagination .el-select .el-input .el-input__inner:hover) {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+:deep(.el-pagination .el-select .el-input .el-input__inner:focus) {
+  border-color: #4A90E2 !important;
 }
 </style>

@@ -41,17 +41,22 @@ export class AdminService {
     try {
       const { data: users, error } = await supabase
         .from('users')
-        .select('id, created_at')
+        .select('id, created_at, last_login, status')
         
       if (error) throw error
       
       const totalUsers = users?.length || 0
-      // 使用注册时间来判断活跃用户（30天内注册的用户视为活跃）
+      
+      // 使用最后登录时间来判断活跃用户（最近7天内登录过的用户视为活跃）
       const activeUsers = users?.filter(user => {
-        const createdDate = new Date(user.created_at)
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        return createdDate > thirtyDaysAgo
+        if (!user.last_login) return false
+        const lastLogin = new Date(user.last_login)
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        return lastLogin > sevenDaysAgo
       }).length || 0
+      
+      // 获取封禁用户数（状态为 'suspended' 的用户）
+      const bannedUsers = users?.filter(user => user.status === 'suspended').length || 0
       
       return {
         totalUsers,
@@ -60,7 +65,8 @@ export class AdminService {
           const today = new Date()
           const userDate = new Date(user.created_at)
           return userDate.toDateString() === today.toDateString()
-        }).length || 0
+        }).length || 0,
+        bannedUsers
       }
     } catch (error) {
       console.error('获取用户统计数据失败:', error)
@@ -80,10 +86,18 @@ export class AdminService {
       const totalOrders = orders?.length || 0
       const completedOrders = orders?.filter(order => order.status === 'completed').length || 0
       
+      // 获取今日新增订单数
+      const todayOrders = orders?.filter(order => {
+        const today = new Date()
+        const orderDate = new Date(order.created_at)
+        return orderDate.toDateString() === today.toDateString()
+      }).length || 0
+      
       return {
         totalOrders,
         completedOrders,
-        pendingOrders: orders?.filter(order => order.status === 'pending').length || 0
+        pendingOrders: orders?.filter(order => order.status === 'pending').length || 0,
+        todayOrders
       }
     } catch (error) {
       console.error('获取订单统计数据失败:', error)
@@ -111,10 +125,10 @@ export class AdminService {
       
       if (error) throw error
       
-      // 为每个用户添加默认状态（因为数据库中没有status字段）
+      // 使用数据库中的真实状态字段
       const usersWithStatus = (data || []).map(user => ({
         ...user,
-        status: 'active' // 默认所有用户都是活跃状态
+        status: user.status || 'active' // 如果数据库中没有状态，默认设为活跃
       }))
       
       return {
@@ -140,8 +154,8 @@ export class AdminService {
         .from('orders')
         .select(`
           *,
-          publisher:users!orders_publisher_id_fkey(username, avatar),
-          receiver:users!orders_receiver_id_fkey(username, avatar)
+          requester:users!orders_requester_id_fkey(username, avatar_url),
+          deliverer:users!orders_deliverer_id_fkey(username, avatar_url)
         `, { count: 'exact' })
         .range(from, to)
         .order('created_at', { ascending: false })
@@ -197,15 +211,37 @@ export class AdminService {
     }
   }
 
-  // 更新用户状态（由于数据库中没有status字段，此方法仅用于演示）
-  static async updateUserStatus(userId: string, status: 'active' | 'suspended') {
+  // 更新用户状态
+  static async updateUserStatus(userId: string, status: 'active' | 'suspended', reason?: string) {
     try {
-      // 由于数据库中没有status字段，这里只返回成功信息
-      // 在实际应用中，如果需要用户状态管理，需要在数据库中添加status字段
-      console.log(`模拟更新用户 ${userId} 状态为: ${status}`)
+      const updateData: any = { status }
       
-      // 返回模拟的成功响应
-      return { id: userId, status }
+      if (status === 'suspended') {
+        updateData.suspension_reason = reason || '违反平台规则'
+        updateData.suspended_at = new Date().toISOString()
+      } else {
+        updateData.suspension_reason = null
+        updateData.suspended_at = null
+      }
+      
+      const { data, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select()
+      
+      if (error) throw error
+      
+      // 记录系统日志
+      await supabase
+        .from('system_logs')
+        .insert({
+          action: 'update_user_status',
+          description: `更新用户状态为: ${status}${reason ? `, 原因: ${reason}` : ''}`,
+          user_id: userId
+        })
+      
+      return data?.[0]
     } catch (error) {
       console.error('更新用户状态失败:', error)
       throw error
@@ -225,6 +261,252 @@ export class AdminService {
       return data?.[0]
     } catch (error) {
       console.error('更新订单状态失败:', error)
+      throw error
+    }
+  }
+
+  // 获取订单趋势数据
+  static async getOrderTrendData(days: number = 7) {
+    try {
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - days)
+      
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('id, created_at, status')
+        .gte('created_at', startDate.toISOString())
+        
+      if (error) throw error
+      
+      // 按日期分组统计订单数量
+      const dateMap = new Map()
+      const dates = []
+      
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toISOString().split('T')[0]
+        dates.push(dateStr)
+        dateMap.set(dateStr, 0)
+      }
+      
+      orders?.forEach(order => {
+        const orderDate = new Date(order.created_at).toISOString().split('T')[0]
+        if (dateMap.has(orderDate)) {
+          dateMap.set(orderDate, dateMap.get(orderDate) + 1)
+        }
+      })
+      
+      return {
+        dates: dates,
+        orderCounts: dates.map(date => dateMap.get(date))
+      }
+    } catch (error) {
+      console.error('获取订单趋势数据失败:', error)
+      throw error
+    }
+  }
+
+  // 获取用户分布数据
+  static async getUserDistributionData() {
+    try {
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('id, status, last_login, created_at')
+        
+      if (error) throw error
+      
+      // 根据最后登录时间计算用户状态分布
+      const now = new Date()
+      const statusCounts = {
+        active: 0,        // 活跃（7天内登录）
+        sevenDays: 0,    // 七天未登录
+        oneMonth: 0,     // 一个月未登录
+        sixMonths: 0,    // 半年未登录
+        oneYear: 0,      // 长期不登录（大于一年）
+        suspended: 0,    // 已封禁
+        neverLogin: 0    // 从未登录
+      }
+      
+      users?.forEach(user => {
+        // 首先检查封禁状态
+        if (user.status === 'suspended') {
+          statusCounts.suspended++
+          return
+        }
+        
+        // 检查登录状态
+        if (!user.last_login) {
+          statusCounts.neverLogin++
+          return
+        }
+        
+        const lastLoginDate = new Date(user.last_login)
+        const timeDiff = now.getTime() - lastLoginDate.getTime()
+        const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+        
+        if (daysDiff <= 7) {
+          statusCounts.active++
+        } else if (daysDiff <= 30) {
+          statusCounts.sevenDays++
+        } else if (daysDiff <= 180) {
+          statusCounts.oneMonth++
+        } else if (daysDiff <= 365) {
+          statusCounts.sixMonths++
+        } else {
+          statusCounts.oneYear++
+        }
+      })
+      
+      return {
+        statusDistribution: [
+          { name: '活跃', value: statusCounts.active },
+          { name: '七天未登录', value: statusCounts.sevenDays },
+          { name: '一个月未登录', value: statusCounts.oneMonth },
+          { name: '半年未登录', value: statusCounts.sixMonths },
+          { name: '长期不登录', value: statusCounts.oneYear },
+          { name: '从未登录', value: statusCounts.neverLogin },
+          { name: '已封禁', value: statusCounts.suspended }
+        ],
+        registrationStats: {
+          total: users?.length || 0,
+          recent: users?.filter(user => {
+            const thirtyDaysAgo = new Date()
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+            return new Date(user.created_at) > thirtyDaysAgo
+          }).length || 0,
+          old: (users?.length || 0) - (users?.filter(user => {
+            const thirtyDaysAgo = new Date()
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+            return new Date(user.created_at) > thirtyDaysAgo
+          }).length || 0)
+        }
+      }
+    } catch (error) {
+      console.error('获取用户分布数据失败:', error)
+      throw error
+    }
+  }
+
+  // 获取订单趋势数据
+  static async getOrderTrendData(days: number = 7) {
+    try {
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - days)
+      
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('id, created_at, status')
+        .gte('created_at', startDate.toISOString())
+        
+      if (error) throw error
+      
+      // 按日期分组统计订单数量
+      const dateMap = new Map()
+      const dates = []
+      
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toISOString().split('T')[0]
+        dates.push(dateStr)
+        dateMap.set(dateStr, 0)
+      }
+      
+      orders?.forEach(order => {
+        const orderDate = new Date(order.created_at).toISOString().split('T')[0]
+        if (dateMap.has(orderDate)) {
+          dateMap.set(orderDate, dateMap.get(orderDate) + 1)
+        }
+      })
+      
+      return {
+        dates: dates,
+        orderCounts: dates.map(date => dateMap.get(date))
+      }
+    } catch (error) {
+      console.error('获取订单趋势数据失败:', error)
+      throw error
+    }
+  }
+
+  // 获取用户分布数据
+  static async getUserDistributionData() {
+    try {
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('id, status, last_login, created_at')
+        
+      if (error) throw error
+      
+      // 根据最后登录时间计算用户状态分布
+      const now = new Date()
+      const statusCounts = {
+        active: 0,        // 活跃（7天内登录）
+        sevenDays: 0,    // 七天未登录
+        oneMonth: 0,     // 一个月未登录
+        sixMonths: 0,    // 半年未登录
+        oneYear: 0,      // 长期不登录（大于一年）
+        suspended: 0,    // 已封禁
+        neverLogin: 0    // 从未登录
+      }
+      
+      users?.forEach(user => {
+        // 首先检查封禁状态
+        if (user.status === 'suspended') {
+          statusCounts.suspended++
+          return
+        }
+        
+        // 检查登录状态
+        if (!user.last_login) {
+          statusCounts.neverLogin++
+          return
+        }
+        
+        const lastLoginDate = new Date(user.last_login)
+        const timeDiff = now.getTime() - lastLoginDate.getTime()
+        const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+        
+        if (daysDiff <= 7) {
+          statusCounts.active++
+        } else if (daysDiff <= 30) {
+          statusCounts.sevenDays++
+        } else if (daysDiff <= 180) {
+          statusCounts.oneMonth++
+        } else if (daysDiff <= 365) {
+          statusCounts.sixMonths++
+        } else {
+          statusCounts.oneYear++
+        }
+      })
+      
+      return {
+        statusDistribution: [
+          { name: '活跃', value: statusCounts.active },
+          { name: '七天未登录', value: statusCounts.sevenDays },
+          { name: '一个月未登录', value: statusCounts.oneMonth },
+          { name: '半年未登录', value: statusCounts.sixMonths },
+          { name: '长期不登录', value: statusCounts.oneYear },
+          { name: '从未登录', value: statusCounts.neverLogin },
+          { name: '已封禁', value: statusCounts.suspended }
+        ],
+        registrationStats: {
+          total: users?.length || 0,
+          recent: users?.filter(user => {
+            const thirtyDaysAgo = new Date()
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+            return new Date(user.created_at) > thirtyDaysAgo
+          }).length || 0,
+          old: (users?.length || 0) - (users?.filter(user => {
+            const thirtyDaysAgo = new Date()
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+            return new Date(user.created_at) > thirtyDaysAgo
+          }).length || 0)
+        }
+      }
+    } catch (error) {
+      console.error('获取用户分布数据失败:', error)
       throw error
     }
   }

@@ -2,84 +2,70 @@
   <div class="admin-settings">
     <div class="page-header">
       <h2>系统设置</h2>
-      <p>管理系统基本配置和参数</p>
+      <p>管理系统基本配置</p>
     </div>
 
-    <!-- 系统配置卡片 -->
+    <!-- 基本设置卡片 -->
     <div class="settings-cards">
       <el-row :gutter="20">
-        <el-col :xs="24" :lg="12">
+        <el-col :xs="24" :lg="8">
           <div class="setting-card">
             <div class="card-header">
               <h3>基本设置</h3>
             </div>
             <div class="card-content">
               <el-form :model="basicSettings" label-width="120px">
-                <el-form-item label="平台名称">
-                  <el-input v-model="basicSettings.platformName" placeholder="请输入平台名称" />
-                </el-form-item>
-                <el-form-item label="平台描述">
-                  <el-input 
-                    v-model="basicSettings.platformDescription" 
-                    type="textarea" 
-                    :rows="3"
-                    placeholder="请输入平台描述" 
-                  />
-                </el-form-item>
                 <el-form-item label="客服电话">
                   <el-input v-model="basicSettings.customerServicePhone" placeholder="请输入客服电话" />
                 </el-form-item>
                 <el-form-item label="客服邮箱">
                   <el-input v-model="basicSettings.customerServiceEmail" placeholder="请输入客服邮箱" />
                 </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="saveBasicSettings" :loading="saving">
-                    保存设置
-                  </el-button>
-                </el-form-item>
               </el-form>
             </div>
           </div>
         </el-col>
 
-        <el-col :xs="24" :lg="12">
+        <el-col :xs="24" :lg="8">
           <div class="setting-card">
             <div class="card-header">
               <h3>订单设置</h3>
             </div>
             <div class="card-content">
-              <el-form :model="orderSettings" label-width="120px">
+              <el-form :model="basicSettings" label-width="140px">
                 <el-form-item label="自动取消时间">
-                  <el-input-number 
-                    v-model="orderSettings.autoCancelMinutes" 
-                    :min="10" 
-                    :max="1440" 
-                    controls-position="right"
-                  />
-                  <span style="margin-left: 8px">分钟</span>
-                </el-form-item>
-                <el-form-item label="自动完成时间">
-                  <el-input-number 
-                    v-model="orderSettings.autoCompleteHours" 
-                    :min="1" 
-                    :max="168" 
-                    controls-position="right"
-                  />
-                  <span style="margin-left: 8px">小时</span>
+                  <el-input-number v-model="basicSettings.orderAutoCancelMinutes" :min="10" :max="1440" />
+                  <span style="margin-left: 8px;">分钟</span>
                 </el-form-item>
                 <el-form-item label="最大订单金额">
-                  <el-input-number 
-                    v-model="orderSettings.maxOrderAmount" 
-                    :min="0" 
-                    :max="10000" 
-                    :precision="2"
-                    controls-position="right"
-                  />
-                  <span style="margin-left: 8px">元</span>
+                  <el-input-number v-model="basicSettings.maxOrderAmount" :min="10" :max="500" :precision="2" />
+                  <span style="margin-left: 8px;">元</span>
+                </el-form-item>
+              </el-form>
+            </div>
+          </div>
+        </el-col>
+
+        <el-col :xs="24" :lg="8">
+          <div class="setting-card">
+            <div class="card-header">
+              <h3>系统日志设置</h3>
+            </div>
+            <div class="card-content">
+              <el-form :model="basicSettings" label-width="120px">
+                <el-form-item label="日志保留天数">
+                  <el-input-number v-model="basicSettings.logRetentionDays" :min="7" :max="365" />
+                  <span style="margin-left: 8px;">天</span>
+                </el-form-item>
+                <el-form-item label="启用操作日志">
+                  <el-switch v-model="basicSettings.enableOperationLog" />
+                </el-form-item>
+                <el-form-item label="启用错误日志">
+                  <el-switch v-model="basicSettings.enableErrorLog" />
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary" @click="saveOrderSettings" :loading="saving">
-                    保存设置
+                  <el-button type="primary" @click="saveBasicSettings" :loading="saving" style="width: 100%;">
+                    保存所有设置
                   </el-button>
                 </el-form-item>
               </el-form>
@@ -87,195 +73,97 @@
           </div>
         </el-col>
       </el-row>
+    </div>
 
-      <el-row :gutter="20" style="margin-top: 20px">
-        <el-col :xs="24" :lg="12">
-          <div class="setting-card">
-            <div class="card-header">
-              <h3>通知设置</h3>
-            </div>
-            <div class="card-content">
-              <el-form :model="notificationSettings" label-width="120px">
-                <el-form-item label="新订单通知">
-                  <el-switch v-model="notificationSettings.newOrderNotification" />
-                </el-form-item>
-                <el-form-item label="订单完成通知">
-                  <el-switch v-model="notificationSettings.orderCompleteNotification" />
-                </el-form-item>
-                <el-form-item label="系统公告">
-                  <el-switch v-model="notificationSettings.systemAnnouncement" />
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="saveNotificationSettings" :loading="saving">
-                    保存设置
-                  </el-button>
-                </el-form-item>
-              </el-form>
-            </div>
-          </div>
-        </el-col>
-
-        <el-col :xs="24" :lg="12">
-          <div class="setting-card">
-            <div class="card-header">
-              <h3>系统维护</h3>
-            </div>
-            <div class="card-content">
-              <div class="maintenance-actions">
-                <el-button type="warning" @click="clearCache" :loading="maintenanceLoading">
-                  清除缓存
-                </el-button>
-                <el-button type="info" @click="exportData" :loading="maintenanceLoading">
-                  导出数据
-                </el-button>
-                <el-button type="danger" @click="systemRestart" :loading="maintenanceLoading">
-                  系统重启
-                </el-button>
-              </div>
-              
-              <div class="system-info" style="margin-top: 20px">
-                <h4>系统信息</h4>
-                <el-descriptions :column="1" border size="small">
-                  <el-descriptions-item label="版本号">v1.0.0</el-descriptions-item>
-                  <el-descriptions-item label="最后启动">{{ systemInfo.lastStartup }}</el-descriptions-item>
-                  <el-descriptions-item label="运行时间">{{ systemInfo.uptime }}</el-descriptions-item>
-                  <el-descriptions-item label="数据库">正常</el-descriptions-item>
-                </el-descriptions>
-              </div>
-            </div>
-          </div>
-        </el-col>
-      </el-row>
+    <!-- 设置说明 -->
+    <div class="settings-info-card">
+      <el-card>
+        <template #header>
+          <h3>设置说明</h3>
+        </template>
+        <div class="settings-info">
+          <p><strong>基本设置：</strong>客服电话和邮箱信息将显示在帮助页面中。</p>
+          <p><strong>订单设置：</strong>自动取消时间指订单无人接单后自动取消的时间。</p>
+          <p><strong>系统日志设置：</strong>日志保留天数控制日志的存储时长；操作日志记录用户操作行为；错误日志记录系统异常信息。</p>
+          <p><strong>保存设置后</strong>，所有相关功能将立即生效。</p>
+        </div>
+      </el-card>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { SystemSettingsService, type SystemSettings } from '../services/systemSettingsService'
 
 const saving = ref(false)
-const maintenanceLoading = ref(false)
 
 // 基本设置
 const basicSettings = reactive({
-  platformName: '校园快递代领平台',
-  platformDescription: '专业的校园快递代领服务平台',
+  // 基本设置
   customerServicePhone: '400-123-4567',
-  customerServiceEmail: 'service@campus-express.com'
-})
-
-// 订单设置
-const orderSettings = reactive({
-  autoCancelMinutes: 30,
-  autoCompleteHours: 24,
-  maxOrderAmount: 500
-})
-
-// 通知设置
-const notificationSettings = reactive({
-  newOrderNotification: true,
-  orderCompleteNotification: true,
-  systemAnnouncement: true
-})
-
-// 系统信息
-const systemInfo = reactive({
-  lastStartup: new Date().toLocaleString('zh-CN'),
-  uptime: '1天2小时30分钟'
+  customerServiceEmail: 'service@campus-express.com',
+  
+  // 订单设置
+  orderAutoCancelMinutes: 30,
+  maxOrderAmount: 50.00,
+  
+  // 系统日志设置
+  logRetentionDays: 30,
+  enableOperationLog: true,
+  enableErrorLog: true
 })
 
 // 保存基本设置
 const saveBasicSettings = async () => {
   try {
     saving.value = true
-    // 模拟保存操作
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success('基本设置保存成功')
-  } catch (error) {
-    ElMessage.error('保存失败')
-  } finally {
-    saving.value = false
-  }
-}
-
-// 保存订单设置
-const saveOrderSettings = async () => {
-  try {
-    saving.value = true
-    // 模拟保存操作
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success('订单设置保存成功')
-  } catch (error) {
-    ElMessage.error('保存失败')
-  } finally {
-    saving.value = false
-  }
-}
-
-// 保存通知设置
-const saveNotificationSettings = async () => {
-  try {
-    saving.value = true
-    // 模拟保存操作
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success('通知设置保存成功')
-  } catch (error) {
-    ElMessage.error('保存失败')
-  } finally {
-    saving.value = false
-  }
-}
-
-// 清除缓存
-const clearCache = async () => {
-  try {
-    await ElMessageBox.confirm('确定要清除系统缓存吗？', '提示', {
-      type: 'warning'
-    })
     
-    maintenanceLoading.value = true
-    // 模拟清除缓存操作
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    ElMessage.success('缓存清除成功')
-  } catch {
-    // 用户取消
-  } finally {
-    maintenanceLoading.value = false
-  }
-}
-
-// 导出数据
-const exportData = async () => {
-  try {
-    maintenanceLoading.value = true
-    // 模拟导出操作
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    ElMessage.success('数据导出成功')
-  } catch (error) {
-    ElMessage.error('导出失败')
-  } finally {
-    maintenanceLoading.value = false
-  }
-}
-
-// 系统重启
-const systemRestart = async () => {
-  try {
-    await ElMessageBox.confirm('确定要重启系统吗？重启期间服务将不可用。', '警告', {
-      type: 'warning',
-      confirmButtonText: '确定重启',
-      cancelButtonText: '取消'
-    })
+    // 验证输入
+    if (!basicSettings.customerServicePhone || !basicSettings.customerServiceEmail) {
+      ElMessage.error('客服电话和邮箱不能为空')
+      return
+    }
     
-    maintenanceLoading.value = true
-    // 模拟重启操作
-    await new Promise(resolve => setTimeout(resolve, 5000))
-    ElMessage.success('系统重启成功')
-  } catch {
-    // 用户取消
+    if (basicSettings.orderAutoCancelMinutes <= 0) {
+      ElMessage.error('自动取消时间必须大于0')
+      return
+    }
+    
+    if (basicSettings.maxOrderAmount <= 0) {
+      ElMessage.error('最大订单金额必须大于0')
+      return
+    }
+    
+    if (basicSettings.logRetentionDays < 7 || basicSettings.logRetentionDays > 365) {
+      ElMessage.error('日志保留天数必须在7到365天之间')
+      return
+    }
+    
+    // 使用系统设置服务保存所有设置
+    const settings: SystemSettings = {
+      customerServicePhone: basicSettings.customerServicePhone,
+      customerServiceEmail: basicSettings.customerServiceEmail,
+      orderAutoCancelMinutes: basicSettings.orderAutoCancelMinutes,
+      maxOrderAmount: basicSettings.maxOrderAmount,
+      logRetentionDays: basicSettings.logRetentionDays,
+      enableOperationLog: basicSettings.enableOperationLog,
+      enableErrorLog: basicSettings.enableErrorLog
+    }
+    
+    const success = await SystemSettingsService.saveSettings(settings)
+    
+    if (success) {
+      ElMessage.success('系统设置保存成功')
+    } else {
+      ElMessage.error('保存失败，请重试')
+    }
+  } catch (error) {
+    console.error('保存系统设置异常:', error)
+    ElMessage.error('保存失败，请检查网络连接')
   } finally {
-    maintenanceLoading.value = false
+    saving.value = false
   }
 }
 
@@ -284,9 +172,23 @@ onMounted(() => {
   loadSettings()
 })
 
-const loadSettings = () => {
-  // 模拟加载设置数据
-  console.log('加载系统设置')
+const loadSettings = async () => {
+  try {
+    // 使用系统设置服务加载所有设置
+    const settings = await SystemSettingsService.getSettings()
+    
+    // 更新表单数据
+    basicSettings.customerServicePhone = settings.customerServicePhone
+    basicSettings.customerServiceEmail = settings.customerServiceEmail
+    basicSettings.orderAutoCancelMinutes = settings.orderAutoCancelMinutes
+    basicSettings.maxOrderAmount = settings.maxOrderAmount
+    basicSettings.logRetentionDays = settings.logRetentionDays
+    basicSettings.enableOperationLog = settings.enableOperationLog
+    basicSettings.enableErrorLog = settings.enableErrorLog
+  } catch (error) {
+    console.error('加载系统设置失败:', error)
+    ElMessage.warning('加载系统设置失败，使用默认值')
+  }
 }
 </script>
 
@@ -339,15 +241,72 @@ const loadSettings = () => {
   padding: 20px;
 }
 
-.maintenance-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+.settings-info p {
+  margin: 8px 0;
+  color: #666;
+  line-height: 1.5;
 }
 
-.system-info h4 {
-  margin: 0 0 12px 0;
-  font-size: 14px;
+.settings-info-card {
+  margin-top: 24px;
+}
+
+.settings-info-card .el-card__header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.settings-info-card h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.settings-info-card {
+  margin-top: 24px;
+}
+
+.settings-info-card .el-card__header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.settings-info-card h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.settings-info-card {
+  margin-top: 24px;
+}
+
+.settings-info-card .el-card__header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.settings-info-card h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.settings-info-card {
+  margin-top: 24px;
+}
+
+.settings-info-card .el-card__header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.settings-info-card h3 {
+  margin: 0;
+  font-size: 16px;
   font-weight: 600;
   color: #1f2937;
 }

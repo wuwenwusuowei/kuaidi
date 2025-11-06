@@ -27,6 +27,12 @@ export class AuthService {
       const user = users[0]
       console.log('找到用户:', user)
       
+      // 检查用户状态
+      if (user.status === 'suspended') {
+        console.log('用户已被封禁:', form.username)
+        throw new Error('您的账号已被封禁，请联系管理员')
+      }
+      
       // 密码验证（实际项目中应该使用加密验证）
       if (!form.password) {
         console.log('密码不能为空')
@@ -34,6 +40,19 @@ export class AuthService {
       }
 
       console.log('登录成功:', user.username)
+      
+      // 更新用户的最后登录时间
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', user.id)
+      
+      if (updateError) {
+        console.error('更新最后登录时间失败:', updateError)
+      } else {
+        console.log('更新最后登录时间成功')
+      }
+      
       return {
         data: user,
         error: null,

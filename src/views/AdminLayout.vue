@@ -35,6 +35,11 @@
           <el-icon><Setting /></el-icon>
           <span>系统设置</span>
         </el-menu-item>
+        
+        <el-menu-item index="/admin/maintenance">
+          <el-icon><Tools /></el-icon>
+          <span>系统维护</span>
+        </el-menu-item>
       </el-menu>
       
       <div class="sidebar-footer">
@@ -86,6 +91,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
+import { DataBoard, User, Document, Setting, Fold, Expand, SwitchButton, ArrowDown, Tools } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -100,7 +106,8 @@ const pageTitles = {
   '/admin/dashboard': '仪表板',
   '/admin/users': '用户管理',
   '/admin/orders': '订单管理',
-  '/admin/settings': '系统设置'
+  '/admin/settings': '系统设置',
+  '/admin/maintenance': '系统维护'
 }
 
 const currentPageTitle = computed(() => {

@@ -51,28 +51,28 @@
         style="width: 100%"
         :default-sort="{ prop: 'created_at', order: 'descending' }"
       >
-        <el-table-column prop="id" label="订单号" width="120" />
+        <el-table-column prop="order_number" label="订单号" width="120" />
         
         <el-table-column prop="tracking_number" label="快递单号" width="150" />
         
-        <el-table-column prop="publisher.username" label="发布者" width="120">
+        <el-table-column prop="requester.username" label="发布者" width="120">
           <template #default="{ row }">
             <div class="user-info">
-              <el-avatar :size="32" :src="row.publisher?.avatar" :alt="row.publisher?.username">
-                {{ row.publisher?.username?.charAt(0) }}
+              <el-avatar :size="32" :src="row.requester?.avatar_url" :alt="row.requester?.username">
+                {{ row.requester?.username?.charAt(0) }}
               </el-avatar>
-              <span style="margin-left: 8px">{{ row.publisher?.username }}</span>
+              <span style="margin-left: 8px">{{ row.requester?.username }}</span>
             </div>
           </template>
         </el-table-column>
         
-        <el-table-column prop="receiver.username" label="接单者" width="120">
+        <el-table-column prop="deliverer.username" label="接单者" width="120">
           <template #default="{ row }">
-            <div v-if="row.receiver" class="user-info">
-              <el-avatar :size="32" :src="row.receiver?.avatar" :alt="row.receiver?.username">
-                {{ row.receiver?.username?.charAt(0) }}
+            <div v-if="row.deliverer" class="user-info">
+              <el-avatar :size="32" :src="row.deliverer?.avatar_url" :alt="row.deliverer?.username">
+                {{ row.deliverer?.username?.charAt(0) }}
               </el-avatar>
-              <span style="margin-left: 8px">{{ row.receiver?.username }}</span>
+              <span style="margin-left: 8px">{{ row.deliverer?.username }}</span>
             </div>
             <span v-else style="color: #999">未接单</span>
           </template>
@@ -137,27 +137,27 @@
     <!-- 订单详情对话框 -->
     <el-dialog
       v-model="detailDialogVisible"
-      :title="`订单详情 - ${selectedOrder?.id}`"
+      :title="`订单详情 - ${selectedOrder?.order_number}`"
       width="700px"
     >
       <div v-if="selectedOrder" class="order-detail">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="订单号">{{ selectedOrder.id }}</el-descriptions-item>
+          <el-descriptions-item label="订单号">{{ selectedOrder.order_number }}</el-descriptions-item>
           <el-descriptions-item label="快递单号">{{ selectedOrder.tracking_number }}</el-descriptions-item>
           <el-descriptions-item label="发布者">
             <div class="user-info">
-              <el-avatar :size="32" :src="selectedOrder.publisher?.avatar">
-                {{ selectedOrder.publisher?.username?.charAt(0) }}
+              <el-avatar :size="32" :src="selectedOrder.requester?.avatar_url">
+                {{ selectedOrder.requester?.username?.charAt(0) }}
               </el-avatar>
-              <span style="margin-left: 8px">{{ selectedOrder.publisher?.username }}</span>
+              <span style="margin-left: 8px">{{ selectedOrder.requester?.username }}</span>
             </div>
           </el-descriptions-item>
           <el-descriptions-item label="接单者">
-            <div v-if="selectedOrder.receiver" class="user-info">
-              <el-avatar :size="32" :src="selectedOrder.receiver?.avatar">
-                {{ selectedOrder.receiver?.username?.charAt(0) }}
+            <div v-if="selectedOrder.deliverer" class="user-info">
+              <el-avatar :size="32" :src="selectedOrder.deliverer?.avatar_url">
+                {{ selectedOrder.deliverer?.username?.charAt(0) }}
               </el-avatar>
-              <span style="margin-left: 8px">{{ selectedOrder.receiver?.username }}</span>
+              <span style="margin-left: 8px">{{ selectedOrder.deliverer?.username }}</span>
             </div>
             <span v-else style="color: #999">未接单</span>
           </el-descriptions-item>
@@ -260,7 +260,9 @@ const statusForm = reactive({
 const statusMap = {
   pending: { text: '待接单', type: 'warning' },
   accepted: { text: '已接单', type: 'info' },
+  picking: { text: '取件中', type: 'info' },
   delivering: { text: '配送中', type: 'primary' },
+  awaiting_payment: { text: '等待支付确认', type: 'warning' },
   completed: { text: '已完成', type: 'success' },
   cancelled: { text: '已取消', type: 'danger' }
 }
@@ -289,10 +291,10 @@ const loadOrders = async () => {
     // 应用搜索筛选
     if (searchKeyword.value) {
       orderList.value = orderList.value.filter(order => 
-        order.id.includes(searchKeyword.value) ||
+        order.order_number?.includes(searchKeyword.value) ||
         order.tracking_number?.includes(searchKeyword.value) ||
-        order.publisher?.username?.includes(searchKeyword.value) ||
-        order.receiver?.username?.includes(searchKeyword.value)
+        order.requester?.username?.includes(searchKeyword.value) ||
+        order.deliverer?.username?.includes(searchKeyword.value)
       )
     }
     

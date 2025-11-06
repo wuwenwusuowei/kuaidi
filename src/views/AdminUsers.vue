@@ -20,7 +20,12 @@
       
       <div class="filter-section">
         <el-select v-model="filterStatus" placeholder="用户状态" clearable @change="handleFilter">
-          <el-option label="活跃用户" value="active" />
+          <el-option label="未封禁" value="active" />
+          <el-option label="活跃" value="active_recent" />
+          <el-option label="七天未登录" value="7" />
+          <el-option label="一个月未登录" value="30" />
+          <el-option label="半年未登录" value="180" />
+          <el-option label="长期不登录" value="365" />
           <el-option label="已封禁" value="suspended" />
         </el-select>
         
@@ -53,10 +58,10 @@
         
         <el-table-column prop="phone" label="手机号" width="130" />
         
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'danger'">
-              {{ row.status === 'active' ? '活跃' : '已封禁' }}
+            <el-tag :type="getStatusTagType(row)">
+              {{ getCombinedStatus(row) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -67,9 +72,9 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="created_at" label="活跃状态" width="160">
+        <el-table-column prop="last_login" label="最后登录" width="160">
           <template #default="{ row }">
-            {{ getActiveStatus(row.created_at) }}
+            {{ formatDate(row.last_login) || '从未登录' }}
           </template>
         </el-table-column>
         
@@ -121,10 +126,10 @@
             <p><strong>邮箱：</strong>{{ selectedUser.email }}</p>
             <p><strong>手机号：</strong>{{ selectedUser.phone || '未设置' }}</p>
             <p><strong>注册时间：</strong>{{ formatDate(selectedUser.created_at) }}</p>
-            <p><strong>活跃状态：</strong>{{ getActiveStatus(selectedUser.created_at) }}</p>
+            <p><strong>最后登录：</strong>{{ formatDate(selectedUser.last_login) || '从未登录' }}</p>
             <p><strong>状态：</strong>
-              <el-tag :type="selectedUser.status === 'active' ? 'success' : 'danger'">
-                {{ selectedUser.status === 'active' ? '活跃' : '已封禁' }}
+              <el-tag :type="getStatusTagType(selectedUser)">
+                {{ getCombinedStatus(selectedUser) }}
               </el-tag>
             </p>
           </div>
@@ -198,13 +203,35 @@ const loadUsers = async () => {
     userList.value = result.users
     total.value = result.total
     
-    // 应用状态筛选（由于数据库中没有status字段，这里使用活跃状态进行筛选）
+    // 应用统一状态筛选
     if (filterStatus.value) {
-      if (filterStatus.value === 'active') {
-        userList.value = userList.value.filter(user => getActiveStatus(user.created_at) === '活跃')
-      } else if (filterStatus.value === 'suspended') {
-        userList.value = userList.value.filter(user => getActiveStatus(user.created_at) === '不活跃')
-      }
+      userList.value = userList.value.filter(user => {
+        // 首先检查封禁状态
+        if (filterStatus.value === 'suspended') {
+          return user.status === 'suspended'
+        } else if (filterStatus.value === 'active') {
+          // 未封禁状态：包括所有非封禁用户
+          return user.status === 'active'
+        } else {
+          // 登录状态筛选：只对未封禁用户生效
+          if (user.status === 'suspended') return false
+          
+          const loginStatus = getLoginStatus(user.last_login)
+          
+          if (filterStatus.value === 'active_recent') {
+            return loginStatus === '活跃'
+          } else if (filterStatus.value === '7') {
+            return loginStatus === '七天未登录'
+          } else if (filterStatus.value === '30') {
+            return loginStatus === '一个月未登录'
+          } else if (filterStatus.value === '180') {
+            return loginStatus === '半年未登录'
+          } else if (filterStatus.value === '365') {
+            return loginStatus === '长期不登录（大于一年）'
+          }
+        }
+        return true
+      })
     }
   } catch (error) {
     console.error('加载用户列表失败:', error)
@@ -257,17 +284,41 @@ const toggleUserStatus = async (user: any) => {
     const newStatus = user.status === 'active' ? 'suspended' : 'active'
     const actionText = newStatus === 'active' ? '解封' : '封禁'
     
-    await ElMessageBox.confirm(
-      `确定要${actionText}用户 "${user.username}" 吗？`,
-      '确认操作',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    let reason = ''
     
-    await AdminService.updateUserStatus(user.id, newStatus)
+    if (newStatus === 'suspended') {
+      // 封禁时需要输入原因
+      const result = await ElMessageBox.prompt(
+        `请输入封禁用户 "${user.username}" 的原因：`,
+        '封禁用户',
+        {
+          confirmButtonText: '确认封禁',
+          cancelButtonText: '取消',
+          inputType: 'textarea',
+          inputPlaceholder: '请输入封禁原因...',
+          inputValidator: (value) => {
+            if (!value || value.trim().length === 0) {
+              return '封禁原因不能为空'
+            }
+            return true
+          }
+        }
+      )
+      reason = result.value
+    } else {
+      // 解封时确认操作
+      await ElMessageBox.confirm(
+        `确定要解封用户 "${user.username}" 吗？`,
+        '确认操作',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+    }
+    
+    await AdminService.updateUserStatus(user.id, newStatus, reason)
     
     ElMessage.success(`${actionText}用户成功`)
     
@@ -301,17 +352,56 @@ const formatDate = (dateString: string) => {
   })
 }
 
-// 获取活跃状态
-const getActiveStatus = (createdAt: string) => {
-  if (!createdAt) return '未知'
+// 获取登录状态（基于最后登录时间）
+const getLoginStatus = (lastLogin: string) => {
+  if (!lastLogin) return '从未登录'
   
-  const createdDate = new Date(createdAt)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const lastLoginDate = new Date(lastLogin)
+  const now = new Date()
+  const timeDiff = now.getTime() - lastLoginDate.getTime()
   
-  if (createdDate > thirtyDaysAgo) {
+  // 计算时间差（毫秒）
+  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+  
+  if (daysDiff <= 7) {
     return '活跃'
+  } else if (daysDiff <= 30) {
+    return '七天未登录'
+  } else if (daysDiff <= 180) {
+    return '一个月未登录'
+  } else if (daysDiff <= 365) {
+    return '半年未登录'
   } else {
-    return '不活跃'
+    return '长期不登录（大于一年）'
+  }
+}
+
+// 获取统一状态显示
+const getCombinedStatus = (user: any) => {
+  if (user.status === 'suspended') {
+    return '已封禁'
+  }
+  
+  return getLoginStatus(user.last_login)
+}
+
+// 获取状态标签类型
+const getStatusTagType = (user: any) => {
+  if (user.status === 'suspended') {
+    return 'danger'
+  }
+  
+  const loginStatus = getLoginStatus(user.last_login)
+  if (loginStatus === '活跃') {
+    return 'success'
+  } else if (loginStatus === '七天未登录') {
+    return 'warning'
+  } else if (loginStatus === '一个月未登录') {
+    return 'warning'
+  } else if (loginStatus === '半年未登录') {
+    return 'info'
+  } else {
+    return 'info'
   }
 }
 

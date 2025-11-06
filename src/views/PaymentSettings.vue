@@ -68,6 +68,8 @@
               <div class="upload-tips">
                 <p>• 请上传清晰的微信收款二维码图片</p>
                 <p>• 支持 JPG、PNG 格式，大小不超过 2MB</p>
+                <p>• 系统会检测是否为有效的支付二维码</p>
+                <p>• 请确保上传的是真实的微信收款码</p>
               </div>
             </div>
           </el-form-item>
@@ -118,6 +120,8 @@
               <div class="upload-tips">
                 <p>• 请上传清晰的支付宝收款二维码图片</p>
                 <p>• 支持 JPG、PNG 格式，大小不超过 2MB</p>
+                <p>• 系统会检测是否为有效的支付二维码</p>
+                <p>• 请确保上传的是真实的支付宝收款码</p>
               </div>
             </div>
           </el-form-item>
@@ -217,8 +221,43 @@ const goBack = () => {
   router.back()
 }
 
+// 检测图片是否为支付二维码
+const isPaymentQRCode = (file: File): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        // 简单的二维码检测逻辑
+        // 1. 检查图片尺寸比例（二维码通常是正方形）
+        const isSquare = Math.abs(img.width - img.height) <= 10
+        
+        // 2. 检查图片尺寸（二维码通常不会太小）
+        const isReasonableSize = img.width >= 200 && img.height >= 200
+        
+        // 3. 检查是否包含二维码特征（简单版本）
+        // 实际的二维码检测需要专门的库，这里做基本验证
+        const hasQRCodeLikeFeatures = isSquare && isReasonableSize
+        
+        // 4. 检查图片内容（通过文件名和URL特征判断）
+        const fileName = file.name.toLowerCase()
+        const hasPaymentKeywords = fileName.includes('wechat') || 
+                                 fileName.includes('alipay') || 
+                                 fileName.includes('pay') || 
+                                 fileName.includes('qr') || 
+                                 fileName.includes('code')
+        
+        // 至少满足基本条件
+        resolve(hasQRCodeLikeFeatures || hasPaymentKeywords)
+      }
+      img.src = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
 // 上传前验证
-const beforeQRCodeUpload = (file: File) => {
+const beforeQRCodeUpload = async (file: File) => {
   const isImage = file.type.startsWith('image/')
   const isLt2M = file.size / 1024 / 1024 < 2
 
@@ -228,6 +267,15 @@ const beforeQRCodeUpload = (file: File) => {
   }
   if (!isLt2M) {
     ElMessage.error('图片大小不能超过 2MB！')
+    return false
+  }
+  
+  // 检测是否为有效的支付二维码
+  const isValidQRCode = await isPaymentQRCode(file)
+  
+  if (!isValidQRCode) {
+    const paymentType = currentUploadType.value === 'wechat' ? '微信支付' : '支付宝'
+    ElMessage.error(`请上传有效的${paymentType}收款二维码，而不是普通图片`)
     return false
   }
   

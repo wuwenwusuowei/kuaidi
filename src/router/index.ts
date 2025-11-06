@@ -14,6 +14,7 @@ import AdminDashboard from '../views/AdminDashboard.vue'
 import AdminUsers from '../views/AdminUsers.vue'
 import AdminOrders from '../views/AdminOrders.vue'
 import AdminSettings from '../views/AdminSettings.vue'
+import AdminMaintenance from '../views/AdminMaintenance.vue'
 
 const routes = [
   { path: '/', name: 'Login', component: Login },
@@ -36,7 +37,8 @@ const routes = [
       { path: 'dashboard', name: 'AdminDashboard', component: AdminDashboard },
       { path: 'users', name: 'AdminUsers', component: AdminUsers },
       { path: 'orders', name: 'AdminOrders', component: AdminOrders },
-      { path: 'settings', name: 'AdminSettings', component: AdminSettings }
+      { path: 'settings', name: 'AdminSettings', component: AdminSettings },
+      { path: 'maintenance', name: 'AdminMaintenance', component: AdminMaintenance }
     ]
   }
 ]

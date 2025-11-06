@@ -15,6 +15,10 @@ CREATE TABLE users (
     credit_score INTEGER DEFAULT 100, -- 信用评分，用于评价系统
     total_orders INTEGER DEFAULT 0, -- 总完成订单数
     avg_rating DECIMAL(3,2) DEFAULT 5.00, -- 平均评分
+    status VARCHAR(20) CHECK (status IN ('active', 'suspended')) DEFAULT 'active', -- 用户状态：active-活跃，suspended-已封禁
+    suspension_reason TEXT, -- 封禁原因
+    suspended_at TIMESTAMPTZ, -- 封禁时间
+    last_login TIMESTAMPTZ, -- 最后登录时间
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -206,17 +210,65 @@ ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews DISABLE ROW LEVEL SECURITY;
 ALTER TABLE messages DISABLE ROW LEVEL SECURITY;
 
--- 系统日志表（用于记录操作日志）
-CREATE TABLE system_logs (
+-- 系统设置表
+CREATE TABLE system_settings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  -- 基本设置
+  customer_service_phone VARCHAR(20) NOT NULL DEFAULT '400-123-4567',
+  customer_service_email VARCHAR(100) NOT NULL DEFAULT 'service@campus-express.com',
+  
+  -- 订单设置
+  order_auto_cancel_minutes INTEGER NOT NULL DEFAULT 30, -- 自动取消时间（分钟）
+  order_auto_complete_minutes INTEGER NOT NULL DEFAULT 120, -- 自动完成时间（分钟）
+  max_order_amount DECIMAL(10,2) NOT NULL DEFAULT 50.00, -- 最大订单金额
+  
+  -- 系统日志设置
+  log_retention_days INTEGER NOT NULL DEFAULT 30, -- 日志保留天数
+  enable_operation_log BOOLEAN NOT NULL DEFAULT true, -- 启用操作日志
+  enable_error_log BOOLEAN NOT NULL DEFAULT true, -- 启用错误日志
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 为系统设置表添加更新时间触发器
+CREATE TRIGGER update_system_settings_updated_at
+BEFORE UPDATE ON system_settings
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 插入默认设置（如果表是空的）
+INSERT INTO system_settings (customer_service_phone, customer_service_email)
+SELECT '400-123-4567', 'service@campus-express.com'
+WHERE NOT EXISTS (SELECT 1 FROM system_settings);
+
+-- 为系统设置表禁用RLS
+ALTER TABLE system_settings DISABLE ROW LEVEL SECURITY;
+
+-- 系统日志表（完整定义）
+CREATE TABLE IF NOT EXISTS system_logs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    action VARCHAR(100) NOT NULL, -- 操作类型
-    description TEXT, -- 操作描述
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- 操作用户（可选）
-    order_id UUID REFERENCES orders(id) ON DELETE SET NULL, -- 相关订单（可选）
-    ip_address INET, -- 操作IP地址
-    user_agent TEXT, -- 用户代理信息
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    action VARCHAR(100) NOT NULL CHECK (action IN ('clear_cache', 'export_data', 'restart_system', 'display_info', 'custom_action')),
+    description TEXT,
+    status VARCHAR(20) CHECK (status IN ('pending', 'success', 'failed')) DEFAULT 'pending',
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 为系统日志表禁用RLS
 ALTER TABLE system_logs DISABLE ROW LEVEL SECURITY;
+
+-- 系统维护记录表（可选，如需单独记录维护操作）
+CREATE TABLE IF NOT EXISTS system_maintenance (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    operation_type VARCHAR(50) NOT NULL CHECK (operation_type IN ('clear_cache', 'export_data', 'restart_system', 'display_info')),
+    triggered_by UUID REFERENCES users(id) ON DELETE SET NULL, -- 触发用户
+    status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed')),
+    details JSONB, -- 操作详情
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+-- 为系统维护表禁用RLS
+ALTER TABLE system_maintenance DISABLE ROW LEVEL SECURITY;

@@ -10,7 +10,7 @@
     <el-header class="header">
       <div class="header-content">
         <div class="logo">
-          <h2>校园快递代领平台 - 使用指南</h2>
+          <h2>{{ platformName }} - 使用指南</h2>
         </div>
         <div class="user-info">
           <el-button @click="goBack" type="primary">
@@ -329,9 +329,9 @@
           <el-card class="guide-card">
             <h3>联系方式</h3>
             <div class="contact-info">
-              <p><strong>客服电话：</strong> 400-123-4567</p>
-              <p><strong>客服邮箱：</strong> support@kuaidi.com</p>
-              <p><strong>服务时间：</strong> 周一至周日 9:00-18:00</p>
+              <p><strong>客服电话：</strong> {{ contactInfo.phone }}</p>
+              <p><strong>客服邮箱：</strong> {{ contactInfo.email }}</p>
+              <p><strong>服务时间：</strong> {{ contactInfo.hours }}</p>
             </div>
           </el-card>
         </div>
@@ -344,8 +344,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import {
   ArrowLeft,
   DocumentAdd,
@@ -356,9 +357,35 @@ import {
   User,
   Service
 } from '@element-plus/icons-vue'
+import { SystemSettingsService } from '../services/systemSettingsService'
 
 const router = useRouter()
 const activeNames = ref(['1'])
+
+// 平台信息数据
+const platformName = ref('校园快递代领平台')
+const platformDescription = ref('专业的校园快递代领服务平台')
+
+// 联系方式数据
+const contactInfo = ref({
+  phone: '400-123-4567',
+  email: 'service@campus-express.com',
+  hours: '周一至周日 9:00-18:00'
+})
+
+// 页面加载时获取系统设置中的平台信息和客服信息
+onMounted(async () => {
+  try {
+    const settings = await SystemSettingsService.getSettings()
+    platformName.value = settings.platformName
+    platformDescription.value = settings.platformDescription
+    contactInfo.value.phone = settings.customerServicePhone
+    contactInfo.value.email = settings.customerServiceEmail
+  } catch (error) {
+    console.error('获取系统设置失败:', error)
+    ElMessage.warning('获取系统设置失败，显示默认信息')
+  }
+})
 
 // 返回首页
 const goBack = () => {

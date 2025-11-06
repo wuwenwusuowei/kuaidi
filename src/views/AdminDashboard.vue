@@ -1,6 +1,6 @@
 <template>
   <div class="admin-dashboard">
-    <!-- 统计卡片 -->
+    <!-- 用户统计卡片 -->
     <div class="stats-cards">
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :lg="6">
@@ -17,8 +17,49 @@
         
         <el-col :xs="24" :sm="12" :lg="6">
           <div class="stat-card">
+            <div class="stat-icon active-icon">
+              <el-icon><TrendCharts /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.activeUsers }}</div>
+              <div class="stat-label">活跃用户</div>
+            </div>
+          </div>
+        </el-col>
+        
+        <el-col :xs="24" :sm="12" :lg="6">
+          <div class="stat-card">
+            <div class="stat-icon new-icon">
+              <el-icon><UserFilled /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.newUsersToday }}</div>
+              <div class="stat-label">今日新增用户</div>
+            </div>
+          </div>
+        </el-col>
+        
+        <el-col :xs="24" :sm="12" :lg="6">
+          <div class="stat-card">
+            <div class="stat-icon banned-icon">
+              <el-icon><Warning /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.bannedUsers || 0 }}</div>
+              <div class="stat-label">封禁用户数</div>
+            </div>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+
+    <!-- 订单统计卡片 -->
+    <div class="stats-cards">
+      <el-row :gutter="20">
+        <el-col :xs="24" :sm="12" :lg="6">
+          <div class="stat-card">
             <div class="stat-icon order-icon">
-              <el-icon><Document /></el-icon>
+              <el-icon><List /></el-icon>
             </div>
             <div class="stat-content">
               <div class="stat-value">{{ stats.totalOrders }}</div>
@@ -50,6 +91,18 @@
             </div>
           </div>
         </el-col>
+        
+        <el-col :xs="24" :sm="12" :lg="6">
+          <div class="stat-card">
+            <div class="stat-icon today-order-icon">
+              <el-icon><Calendar /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.todayOrders }}</div>
+              <div class="stat-label">今日新增订单</div>
+            </div>
+          </div>
+        </el-col>
       </el-row>
     </div>
 
@@ -60,17 +113,17 @@
           <div class="chart-card">
             <div class="chart-header">
               <h3>订单趋势</h3>
-              <el-select v-model="orderTimeRange" size="small" style="width: 120px">
-                <el-option label="近7天" value="7d" />
-                <el-option label="近30天" value="30d" />
-                <el-option label="近90天" value="90d" />
+              <el-select v-model="orderTimeRange" size="small" style="width: 120px" @change="loadOrderTrendData">
+                <el-option label="近7天" value="7" />
+                <el-option label="近30天" value="30" />
+                <el-option label="近90天" value="90" />
               </el-select>
             </div>
             <div class="chart-container">
-              <!-- 这里可以集成图表库 -->
-              <div class="chart-placeholder">
+              <ChartContainer v-if="orderTrendData.dates.length > 0" :option="orderTrendOption" />
+              <div v-else class="chart-placeholder">
                 <el-icon><DataAnalysis /></el-icon>
-                <p>订单趋势图表</p>
+                <p>加载订单趋势数据...</p>
               </div>
             </div>
           </div>
@@ -82,9 +135,10 @@
               <h3>用户分布</h3>
             </div>
             <div class="chart-container">
-              <div class="chart-placeholder">
+              <ChartContainer v-if="userDistributionData.statusDistribution.length > 0" :option="userDistributionOption" />
+              <div v-else class="chart-placeholder">
                 <el-icon><PieChart /></el-icon>
-                <p>用户分布图表</p>
+                <p>加载用户分布数据...</p>
               </div>
             </div>
           </div>
@@ -92,36 +146,18 @@
       </el-row>
     </div>
 
-    <!-- 最近活动 -->
-    <div class="recent-activity">
-      <div class="activity-card">
-        <div class="card-header">
-          <h3>最近活动</h3>
-          <el-button type="primary" text size="small">查看全部</el-button>
-        </div>
-        <div class="activity-list">
-          <div v-for="activity in recentActivities" :key="activity.id" class="activity-item">
-            <div class="activity-icon">
-              <el-icon><component :is="activity.icon" /></el-icon>
-            </div>
-            <div class="activity-content">
-              <div class="activity-title">{{ activity.title }}</div>
-              <div class="activity-time">{{ activity.time }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { AdminService } from '../services/adminService'
-import { User, Document, CircleCheck, Clock } from '@element-plus/icons-vue'
+import ChartContainer from '../components/ChartContainer.vue'
+import { User, Document, CircleCheck, Clock, TrendCharts, UserFilled, Calendar, Money, Warning, List, DataAnalysis, PieChart } from '@element-plus/icons-vue'
 
-const orderTimeRange = ref('7d')
+const orderTimeRange = ref('7')
 const loading = ref(true)
 
 const stats = reactive({
@@ -130,10 +166,113 @@ const stats = reactive({
   activeUsers: 0,
   completedOrders: 0,
   pendingOrders: 0,
-  newUsersToday: 0
+  newUsersToday: 0,
+  todayOrders: 0,
+  todayRevenue: 0,
+  bannedUsers: 0
 })
 
-const recentActivities = ref([])
+// 图表数据
+const orderTrendData = reactive({
+  dates: [] as string[],
+  orderCounts: [] as number[]
+})
+
+const userDistributionData = reactive({
+  statusDistribution: [] as Array<{ name: string; value: number }>,
+  registrationStats: {
+    total: 0,
+    recent: 0,
+    old: 0
+  }
+})
+
+// 订单趋势图表配置
+const orderTrendOption = computed(() => ({
+  tooltip: {
+    trigger: 'axis',
+    formatter: '{b}<br/>{a}: {c} 单'
+  },
+  grid: {
+    left: '3%',
+    right: '4%',
+    bottom: '3%',
+    containLabel: true
+  },
+  xAxis: {
+    type: 'category',
+    data: orderTrendData.dates.map(date => date.split('-').slice(1).join('/')),
+    axisLabel: {
+      rotate: 45
+    }
+  },
+  yAxis: {
+    type: 'value',
+    name: '订单数'
+  },
+  series: [{
+    name: '订单数量',
+    type: 'line',
+    data: orderTrendData.orderCounts,
+    smooth: true,
+    itemStyle: {
+      color: '#409EFF'
+    },
+    areaStyle: {
+      color: {
+        type: 'linear',
+        x: 0,
+        y: 0,
+        x2: 0,
+        y2: 1,
+        colorStops: [{
+          offset: 0, color: 'rgba(64, 158, 255, 0.3)'
+        }, {
+          offset: 1, color: 'rgba(64, 158, 255, 0.05)'
+        }]
+      }
+    }
+  }]
+}))
+
+// 用户分布图表配置
+const userDistributionOption = computed(() => ({
+  tooltip: {
+    trigger: 'item',
+    formatter: '{a} <br/>{b}: {c} ({d}%)'
+  },
+  legend: {
+    orient: 'vertical',
+    left: 'left',
+    top: 'center'
+  },
+  series: [{
+    name: '用户分布',
+    type: 'pie',
+    radius: ['40%', '70%'],
+    avoidLabelOverlap: false,
+    itemStyle: {
+      borderRadius: 10,
+      borderColor: '#fff',
+      borderWidth: 2
+    },
+    label: {
+      show: false,
+      position: 'center'
+    },
+    emphasis: {
+      label: {
+        show: true,
+        fontSize: 18,
+        fontWeight: 'bold'
+      }
+    },
+    labelLine: {
+      show: false
+    },
+    data: userDistributionData.statusDistribution
+  }]
+}))
 
 const loadDashboardData = async () => {
   try {
@@ -142,34 +281,6 @@ const loadDashboardData = async () => {
     
     // 更新统计数据
     Object.assign(stats, dashboardData)
-    
-    // 生成最近活动数据
-    recentActivities.value = [
-      {
-        id: 1,
-        icon: 'User',
-        title: `今日新增 ${dashboardData.newUsersToday} 位用户`,
-        time: '刚刚更新'
-      },
-      {
-        id: 2,
-        icon: 'Document',
-        title: `待处理订单 ${dashboardData.pendingOrders} 个`,
-        time: '实时数据'
-      },
-      {
-        id: 3,
-        icon: 'CircleCheck',
-        title: `已完成订单 ${dashboardData.completedOrders} 个`,
-        time: '实时数据'
-      },
-      {
-        id: 4,
-        icon: 'Clock',
-        title: `活跃用户 ${dashboardData.activeUsers} 位`,
-        time: '实时数据'
-      }
-    ]
   } catch (error) {
     console.error('加载仪表板数据失败:', error)
     ElMessage.error('加载数据失败，使用模拟数据')
@@ -181,13 +292,67 @@ const loadDashboardData = async () => {
     stats.completedOrders = 650
     stats.pendingOrders = 240
     stats.newUsersToday = 12
+    stats.todayOrders = 45
+    stats.todayRevenue = 1280
+    stats.bannedUsers = 8
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => {
-  loadDashboardData()
+const loadOrderTrendData = async () => {
+  try {
+    const days = parseInt(orderTimeRange.value)
+    const trendData = await AdminService.getOrderTrendData(days)
+    
+    Object.assign(orderTrendData, trendData)
+  } catch (error) {
+    console.error('加载订单趋势数据失败:', error)
+    ElMessage.error('加载订单趋势数据失败')
+    
+    // 使用模拟数据
+    const days = parseInt(orderTimeRange.value)
+    const dates = []
+    const counts = []
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      dates.push(date.toISOString().split('T')[0])
+      counts.push(Math.floor(Math.random() * 20) + 5)
+    }
+    
+    orderTrendData.dates = dates
+    orderTrendData.orderCounts = counts
+  }
+}
+
+const loadUserDistributionData = async () => {
+  try {
+    const distributionData = await AdminService.getUserDistributionData()
+    
+    Object.assign(userDistributionData, distributionData)
+  } catch (error) {
+    console.error('加载用户分布数据失败:', error)
+    ElMessage.error('加载用户分布数据失败')
+    
+    // 使用模拟数据
+    userDistributionData.statusDistribution = [
+      { name: '活跃', value: Math.floor(Math.random() * 100) + 50 },
+      { name: '七天未登录', value: Math.floor(Math.random() * 30) + 20 },
+      { name: '一个月未登录', value: Math.floor(Math.random() * 40) + 10 },
+      { name: '半年未登录', value: Math.floor(Math.random() * 20) + 5 },
+      { name: '长期不登录', value: Math.floor(Math.random() * 15) + 3 },
+      { name: '从未登录', value: Math.floor(Math.random() * 10) + 1 },
+      { name: '已封禁', value: Math.floor(Math.random() * 10) + 1 }
+    ]
+  }
+}
+
+onMounted(async () => {
+  await loadDashboardData()
+  await loadOrderTrendData()
+  await loadUserDistributionData()
 })
 </script>
 
@@ -228,9 +393,14 @@ onMounted(() => {
 }
 
 .user-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.order-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.active-icon { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.new-icon { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.banned-icon { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+.order-icon { background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); }
 .completed-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
 .pending-icon { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.today-order-icon { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
+.revenue-icon { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
 
 .stat-content {
   flex: 1;

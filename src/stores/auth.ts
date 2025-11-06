@@ -36,7 +36,13 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(result.error || '登录失败')
       }
     } catch (error: any) {
-      // 如果数据库认证失败，回退到模拟数据（开发阶段）
+      // 检查是否是封禁错误，如果是则直接抛出
+      if (error.message && error.message.includes('账号已被封禁')) {
+        console.warn('用户被封禁:', error.message)
+        throw error
+      }
+      
+      // 其他数据库认证失败，回退到模拟数据（开发阶段）
       console.warn('数据库认证失败，使用模拟数据:', error.message)
       return await fallbackLogin(username, password)
     } finally {
