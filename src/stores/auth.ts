@@ -57,10 +57,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 用户注册
-  const register = async (username: string, password: string, nickname: string) => {
+  const register = async (username: string, password: string, nickname: string, phone?: string) => {
     loading.value = true
     try {
-      const result = await AuthService.register({ username, password, nickname })
+      const result = await AuthService.register({ username, password, nickname, phone })
       
       if (result.success && result.data) {
         user.value = result.data
@@ -81,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (error: any) {
       // 如果数据库注册失败，回退到模拟数据
       console.warn('数据库注册失败，使用模拟数据:', error.message)
-      return await fallbackRegister({ username, password, nickname })
+      return await fallbackRegister({ username, password, nickname, phone })
     } finally {
       loading.value = false
     }
@@ -94,6 +94,11 @@ export const useAuthStore = defineStore('auth', () => {
       throw new Error('用户名已存在')
     }
     
+    // 检查手机号是否已存在
+    if (form.phone && mockUsers.some(u => u.phone === form.phone)) {
+      throw new Error('手机号已被使用')
+    }
+    
     // 模拟注册成功
     const newUser: User = {
       id: Date.now().toString(),
@@ -101,7 +106,8 @@ export const useAuthStore = defineStore('auth', () => {
       nickname: form.nickname,
       avatar_url: '',
       balance: 0.00,
-      phone: '',
+      phone: form.phone || '',
+      phone_verified: form.phone ? true : false,
       email: '',
       campus: form.campus || '',
       created_at: new Date().toISOString(),

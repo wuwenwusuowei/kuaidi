@@ -259,7 +259,7 @@ export class SystemMaintenanceService {
       })
     }
     
-    return csvLines.join('\n')
+    return csvLines.join('\r\n')
   }
 
   // 重启系统（模拟）

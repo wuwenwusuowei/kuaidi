@@ -3,8 +3,19 @@
     <!-- 顶部导航栏 -->
     <el-header class="header">
       <div class="header-content">
-        <div class="logo">
-          <h2>校园快递代领平台</h2>
+        <div class="left-section">
+          <el-button 
+            type="primary" 
+            :icon="ArrowLeft" 
+            @click="goBack" 
+            size="small"
+            class="back-btn"
+          >
+            返回
+          </el-button>
+          <div class="logo">
+            <h2>校园快递代领平台</h2>
+          </div>
         </div>
         <div class="user-info">
           <el-dropdown>
@@ -83,7 +94,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowLeft } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -190,6 +201,11 @@ const goToPaymentSettings = () => {
   router.push('/payment-settings')
 }
 
+// 返回上一页
+const goBack = () => {
+  router.back()
+}
+
 // 退出登录
 const handleLogout = async () => {
   try {
@@ -230,6 +246,12 @@ const handleLogout = async () => {
   height: 60px;
 }
 
+.left-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .logo h2 {
   color: var(--primary-color);
   margin: 0;
@@ -244,6 +266,12 @@ const handleLogout = async () => {
   padding: 4px 8px;
   border-radius: 6px;
   transition: background-color 0.3s;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .user-dropdown:hover {

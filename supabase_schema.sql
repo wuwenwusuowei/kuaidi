@@ -162,6 +162,17 @@ CREATE TABLE user_payment_info (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 9. 手机验证码表
+CREATE TABLE verification_codes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    phone VARCHAR(20) NOT NULL,
+    code VARCHAR(6) NOT NULL,
+    verified BOOLEAN DEFAULT FALSE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 索引优化
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_orders_requester_id ON orders(requester_id);
@@ -178,6 +189,9 @@ CREATE INDEX idx_payments_payer_id ON payments(payer_id);
 CREATE INDEX idx_payments_payee_id ON payments(payee_id);
 CREATE INDEX idx_payments_status ON payments(status);
 CREATE INDEX idx_user_payment_info_user_id ON user_payment_info(user_id);
+CREATE INDEX idx_verification_codes_phone ON verification_codes(phone);
+CREATE INDEX idx_verification_codes_expires_at ON verification_codes(expires_at);
+CREATE INDEX idx_verification_codes_verified ON verification_codes(verified);
 
 -- 更新时间触发器函数
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -194,6 +208,8 @@ CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXE
 CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_payment_info_updated_at BEFORE UPDATE ON user_payment_info FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_verification_codes_updated_at BEFORE UPDATE ON verification_codes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_verification_codes_updated_at BEFORE UPDATE ON verification_codes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 插入示例数据
 INSERT INTO users (username, password_hash, nickname, role, balance, campus) VALUES
