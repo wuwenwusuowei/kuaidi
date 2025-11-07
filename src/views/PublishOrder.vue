@@ -1,5 +1,6 @@
 <template>
   <div class="publish-container">
+    <!-- 发布需求页面 - 包含太阳系行星动画和发布流程 -->
     <!-- 首页的繁星背景 -->
     <div class="starry-bg"></div>
     

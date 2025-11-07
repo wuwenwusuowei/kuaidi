@@ -1,5 +1,6 @@
 <template>
   <div class="task-hall-container">
+    <!-- 任务大厅页面 - 包含3D星空效果和任务筛选功能 -->
     <!-- 校园风格页面头部 -->
     <div class="page-header">
       <div class="header-content">
