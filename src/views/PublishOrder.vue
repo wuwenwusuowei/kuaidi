@@ -30,6 +30,30 @@
       <div class="planet neptune"></div>
     </div>
     
+    <!-- 火箭模型 - 横向飞行动画 -->
+    <div class="rocket-container">
+      <div class="rocket">
+        <!-- 火箭主体 -->
+        <div class="rocket-body">
+          <!-- 火箭头部 -->
+          <div class="rocket-nose"></div>
+          <!-- 火箭窗口 -->
+          <div class="rocket-window"></div>
+        </div>
+        <!-- 火箭尾翼 -->
+        <div class="rocket-fins">
+          <div class="fin fin-top"></div>
+          <div class="fin fin-bottom"></div>
+        </div>
+        <!-- 火箭火焰 -->
+        <div class="rocket-flame">
+          <div class="flame flame-1"></div>
+          <div class="flame flame-2"></div>
+          <div class="flame flame-3"></div>
+        </div>
+      </div>
+    </div>
+    
     <!-- 修复返回按钮 - 使用自定义按钮确保点击事件可靠 -->
     <div class="custom-header">
       <button 
@@ -970,6 +994,187 @@ const handlePublish = async () => {
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+/* 火箭模型样式 */
+.rocket-container {
+  position: fixed;
+  top: 20%;
+  left: -100px;
+  width: 100px;
+  height: 80px;
+  z-index: 0;
+  pointer-events: none;
+  animation: rocketFly 10s ease-in-out infinite;
+}
+
+.rocket {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* 火箭主体 - 平放设计 */
+.rocket-body {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 70px;
+  height: 30px;
+  background: linear-gradient(90deg, #FF6B6B, #FFE66D);
+  border-radius: 4px 8px 8px 4px;
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+}
+
+/* 火箭头部 - 平放设计 */
+.rocket-nose {
+  position: absolute;
+  top: 50%;
+  right: -20px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 15px solid transparent;
+  border-bottom: 15px solid transparent;
+  border-left: 20px solid #FF6B6B;
+}
+
+/* 火箭窗口 - 平放设计 */
+.rocket-window {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: #4ECDC4;
+  border-radius: 50%;
+  box-shadow: 0 0 5px rgba(78, 205, 196, 0.8);
+}
+
+/* 火箭尾翼 - 平放设计 */
+.rocket-fins {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 40px;
+}
+
+.fin {
+  position: absolute;
+  background: #FF6B6B;
+}
+
+.fin-top {
+  top: 0;
+  left: 0;
+  width: 15px;
+  height: 20px;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.fin-bottom {
+  bottom: 0;
+  left: 0;
+  width: 15px;
+  height: 20px;
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
+}
+
+/* 火箭火焰 - 喷射状设计 */
+.rocket-flame {
+  position: absolute;
+  left: -35px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.flame {
+  position: relative;
+  background: linear-gradient(to right, #FFD700, #FF8C00, #FF4500, #8B0000);
+  animation: flameFlicker 0.3s ease-in-out infinite alternate;
+  filter: blur(0.5px);
+}
+
+.flame-1 {
+  width: 30px;
+  height: 20px;
+  border-radius: 0 50% 50% 0;
+  animation-delay: 0s;
+  z-index: 3;
+}
+
+.flame-2 {
+  width: 25px;
+  height: 16px;
+  border-radius: 0 50% 50% 0;
+  animation-delay: 0.1s;
+  margin-left: -8px;
+  z-index: 2;
+}
+
+.flame-3 {
+  width: 20px;
+  height: 12px;
+  border-radius: 0 50% 50% 0;
+  animation-delay: 0.2s;
+  margin-left: -6px;
+  z-index: 1;
+}
+
+/* 火焰动画增强 */
+@keyframes flameFlicker {
+  0% {
+    transform: scaleX(1) scaleY(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scaleX(1.1) scaleY(1.2);
+    opacity: 1;
+  }
+}
+
+/* 火箭飞行动画 - 平放飞行 */
+@keyframes rocketFly {
+  0% {
+    left: -100px;
+    top: 20%;
+    transform: translateY(-50%);
+  }
+  25% {
+    top: 15%;
+  }
+  50% {
+    top: 25%;
+  }
+  75% {
+    top: 18%;
+  }
+  100% {
+    left: calc(100vw + 100px);
+    top: 20%;
+    transform: translateY(-50%);
+  }
+}
+
+/* 火焰闪烁动画 */
+@keyframes flameFlicker {
+  0% {
+    opacity: 0.8;
+    transform: translateX(-50%) scaleY(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scaleY(1.2);
+  }
 }
 
 .publish-container :deep(.el-input .el-input__wrapper:hover) {

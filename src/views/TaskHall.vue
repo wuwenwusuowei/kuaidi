@@ -1,5 +1,10 @@
 <template>
-  <div class="task-hall-container">
+    <div class="task-hall-container">
+    <!-- 页面左侧图片 -->
+    <div class="page-side-image">
+      <img src="/models/挥手图片.png" alt="任务大厅图片" class="side-image-content" />
+    </div>
+    
     <!-- 任务大厅页面 - 包含3D星空效果和任务筛选功能（GitHub已上传版本） -->
     <!-- 校园风格页面头部 -->
     <div class="page-header">
@@ -85,12 +90,12 @@
 
         <!-- 任务列表 -->
         <div v-else class="task-grid">
-          <el-card 
-            v-for="task in filteredTasks" 
-            :key="task.id"
-            class="task-card"
-            shadow="hover"
-          >
+          <div class="task-item" v-for="task in paginatedTasks" :key="task.id">
+            <!-- 任务卡片 -->
+            <el-card 
+              class="task-card"
+              shadow="hover"
+            >
             <template #header>
               <div class="task-header">
                 <div class="task-title">
@@ -154,17 +159,39 @@
                   查看详情
                 </el-button>
                 <el-button 
+                  v-if="task.requesterId === authStore.user?.id"
+                  type="danger" 
+                  size="large"
+                  @click="handleCancelOrder(task.id)"
+                  :loading="cancelingTaskId === task.id"
+                >
+                  取消订单
+                </el-button>
+                <el-button 
+                  v-else
                   type="success" 
                   size="large"
                   @click="handleAcceptTask(task.id)"
                   :loading="acceptingTaskId === task.id"
-                  :disabled="task.requesterId === authStore.user?.id"
                 >
-                  {{ task.requesterId === authStore.user?.id ? '自己的订单' : '立即接单' }}
+                  立即接单
                 </el-button>
               </div>
             </template>
-          </el-card>
+            </el-card>
+          </div>
+        </div>
+
+        <!-- 分页控件 -->
+        <div v-if="filteredTasks.length > 0" class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            :page-size="pageSize"
+            :total="filteredTasks.length"
+            layout="prev, pager, next, jumper, total"
+            @current-change="handlePageChange"
+            class="task-pagination"
+          />
         </div>
       </div>
     </div>
@@ -214,27 +241,26 @@
           <el-descriptions-item label="发布者">
             {{ selectedTask.requesterName || '用户' }}
           </el-descriptions-item>
-          <el-descriptions-item label="发布者">
-            {{ selectedTask.requesterName || '用户' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="发布者">
-            {{ selectedTask.requesterName || '用户' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="发布者">
-            {{ selectedTask.requesterName || '用户' }}
-          </el-descriptions-item>
         </el-descriptions>
       </div>
       
       <template #footer>
         <el-button @click="detailDialogVisible = false">取消</el-button>
         <el-button 
+          v-if="selectedTask?.requesterId === authStore.user?.id"
+          type="danger" 
+          @click="handleCancelOrder(selectedTask?.id)"
+          :loading="cancelingTaskId === selectedTask?.id"
+        >
+          取消订单
+        </el-button>
+        <el-button 
+          v-else
           type="primary" 
           @click="handleAcceptTask(selectedTask?.id)"
           :loading="acceptingTaskId === selectedTask?.id"
-          :disabled="selectedTask?.requesterId === authStore.user?.id"
         >
-          {{ selectedTask?.requesterId === authStore.user?.id ? '自己的订单' : '确认接单' }}
+          确认接单
         </el-button>
       </template>
     </el-dialog>
@@ -270,11 +296,16 @@ const searchKeyword = ref('')
 const filterCompany = ref('')
 const filterSize = ref('')
 
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(4) // 每页显示4个订单卡片
+
 // 任务相关
 const tasks = ref<Order[]>([])
 const selectedTask = ref<Order | null>(null)
 const detailDialogVisible = ref(false)
 const acceptingTaskId = ref<string | null>(null)
+const cancelingTaskId = ref<string | null>(null)
 const loading = ref(true)
 
 // 过滤后的任务列表
@@ -295,6 +326,23 @@ const filteredTasks = computed(() => {
   })
 })
 
+// 分页后的任务列表
+const paginatedTasks = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  return filteredTasks.value.slice(startIndex, endIndex)
+})
+
+// 总页数
+const totalPages = computed(() => {
+  return Math.ceil(filteredTasks.value.length / pageSize.value)
+})
+
+// 处理页码变化
+const handlePageChange = (page: number) => {
+  currentPage.value = page
+}
+
 // 格式化时间
 const formatTime = (timeStr: string) => {
   return new Date(timeStr).toLocaleString('zh-CN', {
@@ -314,6 +362,9 @@ const goBack = () => {
 const refreshTasks = async () => {
   try {
     loading.value = true
+    // 重置到第一页
+    currentPage.value = 1
+    
     const pendingOrders = await orderStore.getPendingOrders()
     
     if (Array.isArray(pendingOrders)) {
@@ -341,6 +392,39 @@ const refreshTasks = async () => {
 const showTaskDetail = (task: Order) => {
   selectedTask.value = task
   detailDialogVisible.value = true
+}
+
+// 取消订单处理
+const handleCancelOrder = async (taskId?: string) => {
+  if (!taskId) return
+  
+  try {
+    cancelingTaskId.value = taskId
+    
+    // 使用自定义的确认对话框
+    await ElMessageBox.confirm('确定要取消订单吗？', '取消订单', {
+      confirmButtonText: '确定取消',
+      cancelButtonText: '手滑了',
+      type: 'warning',
+      distinguishCancelAndClose: true
+    })
+    
+    // 用户点击了"确定取消"
+    await orderStore.cancelOrder(taskId)
+    
+    ElMessage.success('订单已取消')
+    detailDialogVisible.value = false
+    refreshTasks()
+  } catch (error: any) {
+    // 用户点击了"手滑了"或关闭了对话框
+    if (error === 'cancel' || error === 'close') {
+      ElMessage.info('已取消操作')
+    } else {
+      ElMessage.error(error.message || '取消订单失败')
+    }
+  } finally {
+    cancelingTaskId.value = null
+  }
 }
 
 // 接单处理
@@ -652,8 +736,49 @@ onMounted(async () => {
 
 .task-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
   gap: 24px;
+}
+
+.task-item {
+  /* 移除了 flex 布局，让卡片直接显示 */
+}
+
+.task-image {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, 
+    rgba(74, 144, 226, 0.2) 0%, 
+    rgba(255, 126, 130, 0.15) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 0 8px rgba(120, 120, 255, 0.2);
+}
+
+.task-image-content {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.task-card {
+  flex: 1;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(135deg, 
+    rgba(40, 40, 80, 0.9) 0%, 
+    rgba(60, 60, 100, 0.8) 100%);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(120, 120, 255, 0.2);
+  border: 1px solid rgba(120, 120, 255, 0.3);
 }
 
 .task-card {
@@ -826,6 +951,34 @@ onMounted(async () => {
   box-shadow: 0 8px 25px rgba(255, 126, 130, 0.6);
 }
 
+/* 页面左侧图片样式 */
+.page-side-image {
+  position: fixed;
+  left: 5px;
+  top: 300px;
+  width: 240px;
+  height: 300px;
+  z-index: 10;
+  /* 浮动动画效果 */
+  animation: floating 3s ease-in-out infinite;
+}
+
+/* 浮动动画关键帧 */
+@keyframes floating {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.side-image-content {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .task-grid {
@@ -846,5 +999,73 @@ onMounted(async () => {
   .task-actions {
     flex-direction: column;
   }
+  
+  /* 移动端隐藏左侧图片 */
+  .page-side-image {
+    display: none;
+  }
+  
+  /* 移动端分页样式调整 */
+  .pagination-container {
+    padding: 20px;
+  }
+  
+  .task-pagination {
+    justify-content: center;
+  }
+  
+  :deep(.el-pagination) {
+    flex-wrap: wrap;
+  }
+}
+
+/* 分页控件样式 */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 30px 0;
+  margin-top: 20px;
+}
+
+.task-pagination {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+:deep(.el-pagination) {
+  --el-pagination-font-size: 14px;
+  --el-pagination-bg-color: transparent;
+}
+
+:deep(.el-pagination .btn-next),
+:deep(.el-pagination .btn-prev),
+:deep(.el-pagination .number) {
+  background: white;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-pagination .number:hover) {
+  background: #f5f7fa;
+  border-color: #c0c4cc;
+}
+
+:deep(.el-pagination .number.active) {
+  background: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: white;
+}
+
+:deep(.el-pagination__jump) {
+  margin-left: 16px;
+}
+
+:deep(.el-pagination__total) {
+  margin-right: 16px;
+  color: #606266;
 }
 </style>
