@@ -1,6 +1,6 @@
 <template>
   <div class="task-hall-container">
-    <!-- 任务大厅页面 - 包含3D星空效果和任务筛选功能 -->
+    <!-- 任务大厅页面 - 包含3D星空效果和任务筛选功能（GitHub已上传版本） -->
     <!-- 校园风格页面头部 -->
     <div class="page-header">
       <div class="header-content">
@@ -240,6 +240,8 @@
     </el-dialog>
   </div>
 </template>
+
+<!-- 任务大厅页面已成功上传到GitHub仓库 - 最后更新时间: 2025-11-07 -->
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'

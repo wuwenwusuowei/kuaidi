@@ -1,6 +1,6 @@
 <template>
   <div class="publish-container">
-    <!-- 发布需求页面 - 包含太阳系行星动画和发布流程 -->
+    <!-- 发布需求页面 - 包含太阳系行星动画和发布流程（GitHub已上传版本） -->
     <!-- 首页的繁星背景 -->
     <div class="starry-bg"></div>
     
@@ -265,6 +265,8 @@
     </div>
   </div>
 </template>
+
+<!-- 发布需求页面已成功上传到GitHub仓库 - 最后更新时间: 2025-11-07 -->
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
