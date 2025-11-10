@@ -48,8 +48,6 @@
         <!-- 火箭火焰 -->
         <div class="rocket-flame">
           <div class="flame flame-1"></div>
-          <div class="flame flame-2"></div>
-          <div class="flame flame-3"></div>
         </div>
       </div>
     </div>
@@ -1084,14 +1082,14 @@ const handlePublish = async () => {
   clip-path: polygon(0 100%, 100% 0, 100% 100%);
 }
 
-/* 火箭火焰 - 喷射状设计 */
+/* 火箭火焰 - 真实毛笔刷尾焰效果 */
 .rocket-flame {
   position: absolute;
-  left: -35px;
+  left: -85px;
   top: 50%;
   transform: translateY(-50%);
-  width: 50px;
-  height: 25px;
+  width: 100px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -1099,46 +1097,94 @@ const handlePublish = async () => {
 
 .flame {
   position: relative;
-  background: linear-gradient(to right, #FFD700, #FF8C00, #FF4500, #8B0000);
-  animation: flameFlicker 0.3s ease-in-out infinite alternate;
-  filter: blur(0.5px);
+  animation: realBrushFlame 1.5s ease-in-out infinite alternate;
 }
 
 .flame-1 {
-  width: 30px;
-  height: 20px;
-  border-radius: 0 50% 50% 0;
-  animation-delay: 0s;
+  width: 90px;
+  height: 35px;
+  background: 
+    radial-gradient(ellipse 50px 30px at 85% 50%, 
+      rgba(255, 255, 200, 0.9) 0%,
+      rgba(255, 220, 120, 0.8) 25%,
+      rgba(255, 180, 60, 0.7) 50%,
+      rgba(255, 120, 20, 0.5) 75%,
+      rgba(200, 80, 0, 0.3) 90%,
+      transparent 100%
+    );
+  border-radius: 0 0 20px 0;
+  filter: blur(4px) contrast(1.3) brightness(1.2);
+  box-shadow: 
+    0 0 25px rgba(255, 220, 120, 0.7),
+    0 0 50px rgba(255, 180, 60, 0.5),
+    0 0 75px rgba(255, 120, 20, 0.3);
+  transform-origin: left center;
   z-index: 3;
+  /* 模拟毛笔刷的毛边效果 */
+  mask: radial-gradient(ellipse 60px 35px at 85% 50%, 
+    black 0%, 
+    rgba(0, 0, 0, 0.8) 30%, 
+    rgba(0, 0, 0, 0.4) 60%, 
+    transparent 90%
+  );
 }
 
-.flame-2 {
-  width: 25px;
-  height: 16px;
-  border-radius: 0 50% 50% 0;
-  animation-delay: 0.1s;
-  margin-left: -8px;
-  z-index: 2;
-}
-
-.flame-3 {
-  width: 20px;
-  height: 12px;
-  border-radius: 0 50% 50% 0;
-  animation-delay: 0.2s;
-  margin-left: -6px;
-  z-index: 1;
-}
-
-/* 火焰动画增强 */
-@keyframes flameFlicker {
+/* 真实毛笔刷火焰动画 - 圆润毛笔效果 */
+@keyframes realBrushFlame {
   0% {
-    transform: scaleX(1) scaleY(1);
+    transform: scaleX(1) scaleY(0.85);
     opacity: 0.9;
+    filter: blur(4px) contrast(1.2) brightness(1.1);
+    mask: radial-gradient(ellipse 55px 32px at 83% 50%, 
+      black 0%, 
+      rgba(0, 0, 0, 0.8) 28%, 
+      rgba(0, 0, 0, 0.4) 58%, 
+      transparent 88%
+    );
+  }
+  25% {
+    transform: scaleX(1.08) scaleY(0.78);
+    opacity: 0.95;
+    filter: blur(5px) contrast(1.4) brightness(1.3);
+    mask: radial-gradient(ellipse 58px 30px at 86% 50%, 
+      black 0%, 
+      rgba(0, 0, 0, 0.8) 32%, 
+      rgba(0, 0, 0, 0.4) 62%, 
+      transparent 92%
+    );
+  }
+  50% {
+    transform: scaleX(1.12) scaleY(0.82);
+    opacity: 1;
+    filter: blur(3.5px) contrast(1.5) brightness(1.4);
+    mask: radial-gradient(ellipse 52px 33px at 88% 50%, 
+      black 0%, 
+      rgba(0, 0, 0, 0.8) 26%, 
+      rgba(0, 0, 0, 0.4) 56%, 
+      transparent 86%
+    );
+  }
+  75% {
+    transform: scaleX(1.05) scaleY(0.88);
+    opacity: 0.92;
+    filter: blur(4.5px) contrast(1.2) brightness(1.25);
+    mask: radial-gradient(ellipse 56px 29px at 84% 50%, 
+      black 0%, 
+      rgba(0, 0, 0, 0.8) 30%, 
+      rgba(0, 0, 0, 0.4) 60%, 
+      transparent 90%
+    );
   }
   100% {
-    transform: scaleX(1.1) scaleY(1.2);
-    opacity: 1;
+    transform: scaleX(1.1) scaleY(0.8);
+    opacity: 0.88;
+    filter: blur(3.8px) contrast(1.4) brightness(1.15);
+    mask: radial-gradient(ellipse 54px 31px at 87% 50%, 
+      black 0%, 
+      rgba(0, 0, 0, 0.8) 29%, 
+      rgba(0, 0, 0, 0.4) 59%, 
+      transparent 89%
+    );
   }
 }
 
@@ -1165,17 +1211,7 @@ const handlePublish = async () => {
   }
 }
 
-/* 火焰闪烁动画 */
-@keyframes flameFlicker {
-  0% {
-    opacity: 0.8;
-    transform: translateX(-50%) scaleY(1);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(-50%) scaleY(1.2);
-  }
-}
+
 
 .publish-container :deep(.el-input .el-input__wrapper:hover) {
   border: none !important;

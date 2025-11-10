@@ -331,7 +331,7 @@ const loading = ref(true)
 
 // 过滤后的任务列表
 const filteredTasks = computed(() => {
-  return tasks.value.filter(task => {
+  const filtered = tasks.value.filter(task => {
     // 搜索关键词匹配
     const keywordMatch = !searchKeyword.value || 
       task.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
@@ -344,6 +344,21 @@ const filteredTasks = computed(() => {
     const sizeMatch = !filterSize.value || task.size === filterSize.value
     
     return keywordMatch && companyMatch && sizeMatch
+  })
+  
+  // 排序：用户自己发布的订单放在最前面，其他订单按更新时间降序排列
+  return filtered.sort((a, b) => {
+    const isMyOrderA = authStore.user && a.requesterId === authStore.user.id
+    const isMyOrderB = authStore.user && b.requesterId === authStore.user.id
+    
+    if (isMyOrderA && !isMyOrderB) {
+      return -1 // a是用户发布的订单，放在前面
+    } else if (!isMyOrderA && isMyOrderB) {
+      return 1 // b是用户发布的订单，放在前面
+    } else {
+      // 如果都是用户发布的订单或都不是，按更新时间降序排列
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    }
   })
 })
 
