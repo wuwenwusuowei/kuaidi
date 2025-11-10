@@ -102,7 +102,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="viewOrderDetail(row)">
               详情
@@ -115,6 +115,15 @@
               :disabled="row.status === 'completed' || row.status === 'cancelled'"
             >
               状态
+            </el-button>
+            
+            <el-button 
+              size="small" 
+              type="danger"
+              @click="handleDeleteOrder(row)"
+              :disabled="row.status !== 'pending'"
+            >
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -392,6 +401,42 @@ const confirmStatusChange = async () => {
     ElMessage.error('更新订单状态失败')
   } finally {
     statusLoading.value = false
+  }
+}
+
+// 删除订单
+const handleDeleteOrder = async (order: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除订单 "${order.order_number}" 吗？此操作不可恢复，只能删除未接单的订单。`,
+      '确认删除',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    
+    try {
+      loading.value = true
+      await AdminService.deleteOrder(order.id)
+      
+      ElMessage.success('订单删除成功')
+      
+      // 刷新列表
+      loadOrders()
+      
+    } catch (error) {
+      console.error('删除订单失败:', error)
+      ElMessage.error(error.message || '删除订单失败')
+    } finally {
+      loading.value = false
+    }
+    
+  } catch (confirmError) {
+    // 用户取消了删除操作
+    ElMessage.info('已取消删除')
   }
 }
 

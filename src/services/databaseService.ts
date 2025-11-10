@@ -1,20 +1,40 @@
 import { supabase } from '../lib/supabase'
 
 export class DatabaseService {
-  // 检查数据库连接
-  static async checkConnection(): Promise<boolean> {
-    try {
-      const { data, error } = await supabase.from('users').select('count').limit(1)
-      if (error) {
-        console.warn('数据库连接失败:', error.message)
+  // 检查数据库连接（带重试机制）
+  static async checkConnection(maxRetries: number = 3): Promise<boolean> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const { data, error } = await supabase.from('users').select('count').limit(1)
+        
+        if (error) {
+          console.warn(`数据库连接失败 (尝试 ${attempt}/${maxRetries}):`, error.message)
+          
+          // 如果是网络错误，等待一段时间后重试
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
+            continue
+          }
+          
+          return false
+        }
+        
+        console.log('数据库连接成功')
+        return true
+      } catch (error) {
+        console.warn(`数据库连接异常 (尝试 ${attempt}/${maxRetries}):`, error)
+        
+        // 如果是网络错误，等待一段时间后重试
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
+          continue
+        }
+        
         return false
       }
-      console.log('数据库连接成功')
-      return true
-    } catch (error) {
-      console.warn('数据库连接异常:', error)
-      return false
     }
+    
+    return false
   }
 
   // 初始化示例数据

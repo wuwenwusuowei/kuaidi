@@ -265,125 +265,47 @@ export class AdminService {
     }
   }
 
-  // 获取订单趋势数据
-  static async getOrderTrendData(days: number = 7) {
+  // 删除订单（仅限未接单的订单）
+  static async deleteOrder(orderId: string) {
     try {
-      const startDate = new Date()
-      startDate.setDate(startDate.getDate() - days)
-      
-      const { data: orders, error } = await supabase
+      // 首先检查订单状态，只有未接单的订单才能删除
+      const { data: order, error: checkError } = await supabase
         .from('orders')
-        .select('id, created_at, status')
-        .gte('created_at', startDate.toISOString())
-        
-      if (error) throw error
+        .select('status')
+        .eq('id', orderId)
+        .single()
       
-      // 按日期分组统计订单数量
-      const dateMap = new Map()
-      const dates = []
+      if (checkError) throw checkError
       
-      for (let i = days - 1; i >= 0; i--) {
-        const date = new Date()
-        date.setDate(date.getDate() - i)
-        const dateStr = date.toISOString().split('T')[0]
-        dates.push(dateStr)
-        dateMap.set(dateStr, 0)
+      if (!order) {
+        throw new Error('订单不存在')
       }
       
-      orders?.forEach(order => {
-        const orderDate = new Date(order.created_at).toISOString().split('T')[0]
-        if (dateMap.has(orderDate)) {
-          dateMap.set(orderDate, dateMap.get(orderDate) + 1)
-        }
-      })
-      
-      return {
-        dates: dates,
-        orderCounts: dates.map(date => dateMap.get(date))
+      // 只有待接单的订单可以删除
+      if (order.status !== 'pending') {
+        throw new Error('只能删除未接单的订单')
       }
+      
+      // 执行删除操作
+      const { error: deleteError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId)
+      
+      if (deleteError) throw deleteError
+      
+      // 记录系统日志
+      await supabase
+        .from('system_logs')
+        .insert({
+          action: 'delete_order',
+          description: `管理员删除未接单订单: ${orderId}`,
+          target_id: orderId
+        })
+      
+      return { success: true }
     } catch (error) {
-      console.error('获取订单趋势数据失败:', error)
-      throw error
-    }
-  }
-
-  // 获取用户分布数据
-  static async getUserDistributionData() {
-    try {
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('id, status, last_login, created_at')
-        
-      if (error) throw error
-      
-      // 根据最后登录时间计算用户状态分布
-      const now = new Date()
-      const statusCounts = {
-        active: 0,        // 活跃（7天内登录）
-        sevenDays: 0,    // 七天未登录
-        oneMonth: 0,     // 一个月未登录
-        sixMonths: 0,    // 半年未登录
-        oneYear: 0,      // 长期不登录（大于一年）
-        suspended: 0,    // 已封禁
-        neverLogin: 0    // 从未登录
-      }
-      
-      users?.forEach(user => {
-        // 首先检查封禁状态
-        if (user.status === 'suspended') {
-          statusCounts.suspended++
-          return
-        }
-        
-        // 检查登录状态
-        if (!user.last_login) {
-          statusCounts.neverLogin++
-          return
-        }
-        
-        const lastLoginDate = new Date(user.last_login)
-        const timeDiff = now.getTime() - lastLoginDate.getTime()
-        const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
-        
-        if (daysDiff <= 7) {
-          statusCounts.active++
-        } else if (daysDiff <= 30) {
-          statusCounts.sevenDays++
-        } else if (daysDiff <= 180) {
-          statusCounts.oneMonth++
-        } else if (daysDiff <= 365) {
-          statusCounts.sixMonths++
-        } else {
-          statusCounts.oneYear++
-        }
-      })
-      
-      return {
-        statusDistribution: [
-          { name: '活跃', value: statusCounts.active },
-          { name: '七天未登录', value: statusCounts.sevenDays },
-          { name: '一个月未登录', value: statusCounts.oneMonth },
-          { name: '半年未登录', value: statusCounts.sixMonths },
-          { name: '长期不登录', value: statusCounts.oneYear },
-          { name: '从未登录', value: statusCounts.neverLogin },
-          { name: '已封禁', value: statusCounts.suspended }
-        ],
-        registrationStats: {
-          total: users?.length || 0,
-          recent: users?.filter(user => {
-            const thirtyDaysAgo = new Date()
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-            return new Date(user.created_at) > thirtyDaysAgo
-          }).length || 0,
-          old: (users?.length || 0) - (users?.filter(user => {
-            const thirtyDaysAgo = new Date()
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-            return new Date(user.created_at) > thirtyDaysAgo
-          }).length || 0)
-        }
-      }
-    } catch (error) {
-      console.error('获取用户分布数据失败:', error)
+      console.error('删除订单失败:', error)
       throw error
     }
   }
