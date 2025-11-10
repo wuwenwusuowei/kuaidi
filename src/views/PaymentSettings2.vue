@@ -415,18 +415,23 @@ const validateQRCode = async (base64Data: string, type: 'wechat' | 'alipay'): Pr
         const width = img.width
         const height = img.height
         
-        // 二维码应该近似正方形
-        const aspectRatio = width / height
-        const isSquare = aspectRatio >= 0.8 && aspectRatio <= 1.2
+        console.log('图片尺寸:', width, 'x', height)
         
-        // 最小尺寸要求
-        const isSizeValid = width >= 100 && height >= 100
+        // 二维码应该近似正方形，但放宽限制
+        const aspectRatio = width / height
+        const isSquare = aspectRatio >= 0.7 && aspectRatio <= 1.3  // 放宽到0.7-1.3
+        
+        // 最小尺寸要求，放宽限制
+        const isSizeValid = width >= 50 && height >= 50  // 降低到50x50
+        
+        console.log('尺寸验证:', { isSquare, isSizeValid })
         
         // 简单的颜色检测：二维码应该包含深色和浅色区域
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
         
         if (!ctx) {
+          console.log('Canvas不支持，只做基础验证')
           resolve(isSquare && isSizeValid)
           return
         }
@@ -435,33 +440,50 @@ const validateQRCode = async (base64Data: string, type: 'wechat' | 'alipay'): Pr
         canvas.height = height
         ctx.drawImage(img, 0, 0)
         
-        // 采样检测图像是否为二维码
+        // 更多采样点，更准确地检测二维码特征
         const samplePoints = [
-          { x: 0.2, y: 0.2 }, { x: 0.8, y: 0.2 },
-          { x: 0.2, y: 0.8 }, { x: 0.8, y: 0.8 },
+          { x: 0.1, y: 0.1 }, { x: 0.2, y: 0.2 }, { x: 0.3, y: 0.3 },
+          { x: 0.7, y: 0.1 }, { x: 0.8, y: 0.2 }, { x: 0.9, y: 0.3 },
+          { x: 0.1, y: 0.7 }, { x: 0.2, y: 0.8 }, { x: 0.3, y: 0.9 },
+          { x: 0.7, y: 0.7 }, { x: 0.8, y: 0.8 }, { x: 0.9, y: 0.9 },
           { x: 0.5, y: 0.5 }
         ]
         
-        let validPoints = 0
+        let darkPoints = 0
+        let lightPoints = 0
+        
         samplePoints.forEach(point => {
           const x = Math.floor(point.x * width)
           const y = Math.floor(point.y * height)
           const pixelData = ctx.getImageData(x, y, 1, 1).data
           
-          // 检查像素是否为深色（二维码特征）
+          // 计算亮度
           const brightness = (pixelData[0] + pixelData[1] + pixelData[2]) / 3
-          if (brightness < 128) {
-            validPoints++
+          
+          if (brightness < 100) {  // 深色点
+            darkPoints++
+          } else if (brightness > 200) {  // 浅色点
+            lightPoints++
           }
         })
         
-        // 至少有2个深色点（二维码特征）
-        const hasQRCodeFeatures = validPoints >= 2
+        console.log('颜色检测结果:', { darkPoints, lightPoints, totalPoints: samplePoints.length })
         
-        resolve(isSquare && isSizeValid && hasQRCodeFeatures)
+        // 放宽条件：只要有深色点和浅色点的对比，就认为是二维码
+        const hasQRCodeFeatures = darkPoints >= 2 && lightPoints >= 2
+        
+        console.log('最终验证结果:', { isSquare, isSizeValid, hasQRCodeFeatures })
+        
+        // 放宽验证：只要满足基础尺寸要求，就认为可能是二维码
+        const isLikelyQRCode = isSizeValid && (hasQRCodeFeatures || isSquare)
+        
+        console.log('是否通过验证:', isLikelyQRCode)
+        
+        resolve(isLikelyQRCode)
       }
       
       img.onerror = () => {
+        console.log('图片加载失败')
         resolve(false)
       }
       
