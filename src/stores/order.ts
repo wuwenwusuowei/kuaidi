@@ -299,7 +299,7 @@ export const useOrderStore = defineStore('order', () => {
   // 取消订单
   const cancelOrder = async (orderId: string) => {
     try {
-      const result = await OrderService.updateOrderStatus(orderId, 'cancelled')
+      const result = await OrderService.cancelOrder(orderId)
       if (result.success && result.data) {
         const updatedOrder = convertDatabaseOrder(result.data)
         // 更新本地订单列表

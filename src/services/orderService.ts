@@ -254,6 +254,8 @@ export class OrderService {
         updateData.delivered_at = new Date().toISOString()
       } else if (status === 'completed') {
         updateData.delivered_at = new Date().toISOString()
+      } else if (status === 'cancelled') {
+        updateData.cancelled_at = new Date().toISOString()
       }
 
       const { data, error } = await supabase
@@ -277,6 +279,58 @@ export class OrderService {
       return {
         data: null,
         error: error.message || '更新订单状态失败',
+        success: false
+      }
+    }
+  }
+
+  // 取消订单（专用方法）
+  static async cancelOrder(orderId: string): Promise<ApiResponse<Order>> {
+    try {
+      // 首先检查订单是否存在且可以取消
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single()
+
+      if (orderError) {
+        throw new Error('订单不存在')
+      }
+
+      // 检查订单状态是否可以取消
+      if (orderData.status === 'completed' || orderData.status === 'cancelled') {
+        throw new Error('订单无法取消')
+      }
+
+      // 执行取消操作
+      const updateData = {
+        status: 'cancelled' as const,
+        cancelled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      const { data, error } = await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', orderId)
+        .select()
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        throw new Error('取消订单失败')
+      }
+
+      return {
+        data: data[0],
+        error: null,
+        success: true
+      }
+    } catch (error: any) {
+      return {
+        data: null,
+        error: error.message || '取消订单失败',
         success: false
       }
     }

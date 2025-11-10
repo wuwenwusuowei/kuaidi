@@ -184,14 +184,34 @@
 
         <!-- 分页控件 -->
         <div v-if="filteredTasks.length > 0" class="pagination-container">
-          <el-pagination
-            v-model:current-page="currentPage"
-            :page-size="pageSize"
-            :total="filteredTasks.length"
-            layout="prev, pager, next, jumper, total"
-            @current-change="handlePageChange"
-            class="task-pagination"
-          />
+          <div class="pagination-wrapper">
+            <el-pagination
+              v-model:current-page="currentPage"
+              :page-size="pageSize"
+              :total="filteredTasks.length"
+              layout="prev, pager, next"
+              @current-change="handlePageChange"
+              class="task-pagination"
+            />
+            <div class="custom-jumper">
+              <span class="jumper-text">前往</span>
+              <input
+                v-model="jumperInput"
+                type="number"
+                :min="1"
+                :max="totalPages"
+                class="simple-jumper-input"
+                placeholder="页码"
+              />
+              <span class="jumper-text">页</span>
+              <button 
+                @click="handleJumper"
+                class="simple-jumper-btn"
+              >
+                确定
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -299,6 +319,7 @@ const filterSize = ref('')
 // 分页相关
 const currentPage = ref(1)
 const pageSize = ref(4) // 每页显示4个订单卡片
+const jumperInput = ref('')
 
 // 任务相关
 const tasks = ref<Order[]>([])
@@ -340,7 +361,39 @@ const totalPages = computed(() => {
 
 // 处理页码变化
 const handlePageChange = (page: number) => {
-  currentPage.value = page
+  // 确保页码在有效范围内
+  if (page < 1) {
+    currentPage.value = 1
+  } else if (page > totalPages.value) {
+    currentPage.value = totalPages.value
+  } else {
+    currentPage.value = page
+  }
+}
+
+// 处理自定义跳转
+const handleJumper = () => {
+  if (!jumperInput.value) {
+    ElMessage.warning('请输入页码')
+    return
+  }
+  
+  const pageNumber = parseInt(jumperInput.value)
+  
+  if (isNaN(pageNumber) || pageNumber < 1) {
+    ElMessage.warning('请输入有效的页码')
+    jumperInput.value = ''
+    return
+  }
+  
+  if (pageNumber > totalPages.value) {
+    ElMessage.warning(`页码不能超过总页数 ${totalPages.value}`)
+    jumperInput.value = ''
+    return
+  }
+  
+  currentPage.value = pageNumber
+  jumperInput.value = ''
 }
 
 // 格式化时间
@@ -963,6 +1016,78 @@ onMounted(async () => {
   animation: floating 3s ease-in-out infinite;
 }
 
+/* 自定义跳转器样式 */
+.custom-jumper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.jumper-text {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.simple-jumper-input {
+  width: 70px;
+  height: 32px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  text-align: center;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.simple-jumper-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.simple-jumper-input:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.simple-jumper-input:focus {
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.simple-jumper-btn {
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #4A90E2 0%, #3A7BD5 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.simple-jumper-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+  background: linear-gradient(135deg, #3A7BD5 0%, #4A90E2 100%);
+}
+
+.simple-jumper-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
+}
+
 /* 浮动动画关键帧 */
 @keyframes floating {
   0%, 100% {
@@ -1010,6 +1135,12 @@ onMounted(async () => {
     padding: 20px;
   }
   
+  .pagination-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
   .task-pagination {
     justify-content: center;
   }
@@ -1019,53 +1150,104 @@ onMounted(async () => {
   }
 }
 
-/* 分页控件样式 */
+/* 分页控件样式 - 与页面风格统一 */
 .pagination-container {
+  margin-top: 32px;
   display: flex;
   justify-content: center;
-  padding: 30px 0;
-  margin-top: 20px;
+  padding: 20px 0;
+}
+
+.pagination-wrapper {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 在大屏幕上保持在同一行 */
+@media (min-width: 768px) {
+  .pagination-wrapper {
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
 }
 
 .task-pagination {
-  background: white;
-  border-radius: 12px;
-  padding: 16px 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
 }
 
 :deep(.el-pagination) {
   --el-pagination-font-size: 14px;
   --el-pagination-bg-color: transparent;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 :deep(.el-pagination .btn-next),
 :deep(.el-pagination .btn-prev),
 :deep(.el-pagination .number) {
-  background: white;
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
   transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
 }
 
+:deep(.el-pagination .btn-next:hover),
+:deep(.el-pagination .btn-prev:hover),
 :deep(.el-pagination .number:hover) {
-  background: #f5f7fa;
-  border-color: #c0c4cc;
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 :deep(.el-pagination .number.active) {
-  background: var(--el-color-primary);
-  border-color: var(--el-color-primary);
+  background: linear-gradient(135deg, #4A90E2, #6BA8E9);
+  border-color: rgba(74, 144, 226, 0.6);
   color: white;
+  box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4);
+}
+
+:deep(.el-pagination .btn-next:disabled),
+:deep(.el-pagination .btn-prev:disabled) {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 :deep(.el-pagination__jump) {
-  margin-left: 16px;
+  margin-left: 20px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-:deep(.el-pagination__total) {
-  margin-right: 16px;
-  color: #606266;
+:deep(.el-pagination__jump .el-input__inner) {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+:deep(.el-pagination__jump .el-input__inner:hover) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+:deep(.el-pagination__jump .el-input__inner:focus) {
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
 </style>

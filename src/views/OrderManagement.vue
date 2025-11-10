@@ -251,6 +251,23 @@
               @size-change="handleSizeChange"
               @current-change="handleCurrentChange"
             />
+            
+            <!-- 自定义跳转组件 -->
+            <div class="custom-jumper">
+              <span class="jumper-label">跳转至</span>
+              <input
+                v-model="jumperInput"
+                type="number"
+                min="1"
+                :max="totalPages"
+                class="jumper-input"
+                placeholder="页码"
+                @keyup.enter="handleJumper"
+              />
+              <button class="jumper-button" @click="handleJumper">
+                跳转
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -449,6 +466,7 @@ const delivererInfoCache = reactive<Record<string, string>>({})
 // 分页相关变量
 const currentPage = ref(1)
 const pageSize = ref(2) // 默认每页显示2个订单
+const jumperInput = ref('') // 跳转输入框
 
 // 分页数据计算
 const pagedOrders = computed(() => {
@@ -457,6 +475,11 @@ const pagedOrders = computed(() => {
   const startIndex = (currentPage.value - 1) * pageSize.value
   const endIndex = startIndex + pageSize.value
   return filteredOrders.value.slice(startIndex, endIndex)
+})
+
+// 总页数
+const totalPages = computed(() => {
+  return Math.ceil(filteredOrders.value.length / pageSize.value)
 })
 
 const filteredOrders = computed(() => {
@@ -569,6 +592,36 @@ const handleCurrentChange = (newPage: number) => {
   currentPage.value = newPage
   // 滚动到顶部
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// 处理跳转
+const handleJumper = () => {
+  if (!jumperInput.value) {
+    ElMessage.warning('请输入页码')
+    return
+  }
+
+  const page = parseInt(jumperInput.value)
+  
+  if (isNaN(page) || page < 1) {
+    ElMessage.warning('请输入有效的页码')
+    jumperInput.value = ''
+    return
+  }
+
+  if (page > totalPages.value) {
+    ElMessage.warning(`页码不能超过总页数 ${totalPages.value}`)
+    jumperInput.value = ''
+    return
+  }
+
+  currentPage.value = page
+  jumperInput.value = ''
+  
+  // 滚动到顶部
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  
+  ElMessage.success(`已跳转到第 ${page} 页`)
 }
 
 const showOrderDetail = (order: Order) => {
@@ -1606,6 +1659,19 @@ const viewDetails = (order: Order) => {
   backdrop-filter: blur(25px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 在大屏幕上保持在同一行 */
+@media (min-width: 768px) {
+  .pagination {
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
 }
 
 :deep(.el-pagination) {
@@ -1681,5 +1747,89 @@ const viewDetails = (order: Order) => {
 
 :deep(.el-pagination .el-select .el-input .el-input__inner:focus) {
   border-color: #4A90E2 !important;
+}
+
+/* 自定义跳转组件样式 */
+.custom-jumper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.jumper-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.jumper-input {
+  width: 80px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.jumper-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.jumper-input:focus {
+  outline: none;
+  border-color: #4A90E2;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.jumper-button {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #4A90E2, #6BA8E9);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.jumper-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+  background: linear-gradient(135deg, #6BA8E9, #8BC34A);
+}
+
+.jumper-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .custom-jumper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .jumper-input {
+    width: 100%;
+  }
+  
+  .jumper-button {
+    width: 100%;
+    padding: 10px;
+  }
 }
 </style>
