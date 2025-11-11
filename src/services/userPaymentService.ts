@@ -17,6 +17,10 @@ const paymentInfoCache = new Map<string, { data: UserPaymentInfo; timestamp: num
 const CACHE_DURATION = 5 * 60 * 1000 // 5分钟缓存
 
 export class UserPaymentService {
+  // 清除特定用户的缓存
+  static clearPaymentInfoCache(userId: string) {
+    paymentInfoCache.delete(userId)
+  }
   // 获取用户的支付信息（带缓存和重试机制）
   static async getUserPaymentInfo(userId: string): Promise<ApiResponse<UserPaymentInfo>> {
     try {

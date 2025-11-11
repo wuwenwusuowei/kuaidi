@@ -359,7 +359,7 @@ const beforeQRCodeUpload = (file: File) => {
 // 处理文件上传
 const handleQRCodeUpload = async (file: File) => {
   try {
-    // 将图片转换为Base64进行二维码检测
+    // 将图片转换为Base64进行二维码检测和保存
     const reader = new FileReader()
     
     reader.onload = async (e) => {
@@ -374,16 +374,18 @@ const handleQRCodeUpload = async (file: File) => {
           return
         }
         
-        // 检测通过，使用文件对象URL作为预览
-        const objectUrl = URL.createObjectURL(file)
-        
+        // 检测通过，直接使用Base64作为支付信息
         if (currentUploadType.value === 'wechat') {
-          paymentForm.value.wechatQRCodeUrl = objectUrl
+          paymentForm.value.wechatQRCodeUrl = base64
+          wechatQRCodeLoading.value = true
+          previewWechatQRCodeLoading.value = true
         } else {
-          paymentForm.value.alipayQRCodeUrl = objectUrl
+          paymentForm.value.alipayQRCodeUrl = base64
+          alipayQRCodeLoading.value = true
+          previewAlipayQRCodeLoading.value = true
         }
         
-        ElMessage.success('二维码上传成功')
+        ElMessage.success('二维码上传成功，请点击保存按钮完成设置')
         
       } catch (error) {
         console.error('二维码检测失败:', error)
@@ -528,7 +530,12 @@ const savePaymentInfo = async () => {
     )
 
     if (result.success) {
+      // 清除缓存，确保下次读取最新数据
+      UserPaymentService.clearPaymentInfoCache(authStore.user.id)
       ElMessage.success('支付信息保存成功')
+      
+      // 重新加载支付信息，确保显示最新数据
+      loadUserPaymentInfo()
     } else {
       ElMessage.error('保存失败：' + result.error)
     }
@@ -551,6 +558,10 @@ const loadUserPaymentInfo = async () => {
     }
 
     console.log('获取用户支付信息，用户ID:', authStore.user.id)
+    
+    // 清除缓存，确保获取最新数据
+    UserPaymentService.clearPaymentInfoCache(authStore.user.id)
+    
     const result = await UserPaymentService.getUserPaymentInfo(authStore.user.id)
     
     console.log('支付信息获取结果:', result)
@@ -562,15 +573,18 @@ const loadUserPaymentInfo = async () => {
       
       // 设置二维码URL - 强制重新加载
       if (result.data && result.data.wechat_qr_code_url) {
-        console.log('设置微信二维码URL:', result.data.wechat_qr_code_url)
+        console.log('设置微信二维码URL')
         wechatQRCodeLoading.value = true
         previewWechatQRCodeLoading.value = true
-        // 先设置为空，再设置URL，强制图片重新加载
-        paymentForm.value.wechatQRCodeUrl = ''
-        // 使用setTimeout替代nextTick
+        
+        // 直接设置二维码URL，使用时间戳强制重新加载
+        paymentForm.value.wechatQRCodeUrl = result.data.wechat_qr_code_url
+        
+        // 设置加载状态为false（图片会自行触发加载事件）
         setTimeout(() => {
-          paymentForm.value.wechatQRCodeUrl = result.data!.wechat_qr_code_url
-        }, 50)
+          wechatQRCodeLoading.value = false
+          previewWechatQRCodeLoading.value = false
+        }, 1000)
       } else {
         console.log('没有微信二维码URL')
         paymentForm.value.wechatQRCodeUrl = ''
@@ -579,15 +593,18 @@ const loadUserPaymentInfo = async () => {
       }
       
       if (result.data && result.data.alipay_qr_code_url) {
-        console.log('设置支付宝二维码URL:', result.data.alipay_qr_code_url)
+        console.log('设置支付宝二维码URL')
         alipayQRCodeLoading.value = true
         previewAlipayQRCodeLoading.value = true
-        // 先设置为空，再设置URL，强制图片重新加载
-        paymentForm.value.alipayQRCodeUrl = ''
-        // 使用setTimeout替代nextTick
+        
+        // 直接设置二维码URL，使用时间戳强制重新加载
+        paymentForm.value.alipayQRCodeUrl = result.data.alipay_qr_code_url
+        
+        // 设置加载状态为false（图片会自行触发加载事件）
         setTimeout(() => {
-          paymentForm.value.alipayQRCodeUrl = result.data!.alipay_qr_code_url
-        }, 50)
+          alipayQRCodeLoading.value = false
+          previewAlipayQRCodeLoading.value = false
+        }, 1000)
       } else {
         console.log('没有支付宝二维码URL')
         paymentForm.value.alipayQRCodeUrl = ''
@@ -596,6 +613,13 @@ const loadUserPaymentInfo = async () => {
       }
     } else {
       console.log('支付信息获取失败或没有数据')
+      // 清空表单数据
+      paymentForm.value.wechatQRCodeUrl = ''
+      paymentForm.value.alipayQRCodeUrl = ''
+      wechatQRCodeLoading.value = false
+      alipayQRCodeLoading.value = false
+      previewWechatQRCodeLoading.value = false
+      previewAlipayQRCodeLoading.value = false
     }
   } catch (error) {
     console.error('加载支付信息失败:', error)
