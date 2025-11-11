@@ -359,24 +359,118 @@ const beforeQRCodeUpload = (file: File) => {
 // 处理文件上传
 const handleQRCodeUpload = async (file: File) => {
   try {
-    // 将图片转换为Base64
+    // 将图片转换为Base64进行二维码检测
     const reader = new FileReader()
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string
-      
-      if (currentUploadType.value === 'wechat') {
-        paymentForm.value.wechatQRCodeUrl = base64
-      } else {
-        paymentForm.value.alipayQRCodeUrl = base64
+    
+    reader.onload = async (e) => {
+      try {
+        const base64 = e.target?.result as string
+        
+        // 二维码检测逻辑
+        const isQRCodeValid = await validateQRCode(base64, currentUploadType.value)
+        
+        if (!isQRCodeValid) {
+          ElMessage.error('请上传有效的收款二维码图片')
+          return
+        }
+        
+        // 检测通过，使用文件对象URL作为预览
+        const objectUrl = URL.createObjectURL(file)
+        
+        if (currentUploadType.value === 'wechat') {
+          paymentForm.value.wechatQRCodeUrl = objectUrl
+        } else {
+          paymentForm.value.alipayQRCodeUrl = objectUrl
+        }
+        
+        ElMessage.success('二维码上传成功')
+        
+      } catch (error) {
+        console.error('二维码检测失败:', error)
+        ElMessage.error('二维码检测失败，请重新上传')
       }
-      
-      ElMessage.success('二维码上传成功')
     }
+    
+    reader.onerror = () => {
+      ElMessage.error('文件读取失败，请重新上传')
+    }
+    
     reader.readAsDataURL(file)
     
   } catch (error) {
     console.error('上传二维码失败:', error)
     ElMessage.error('上传二维码失败')
+  }
+}
+
+// 二维码验证函数
+const validateQRCode = async (base64Data: string, type: 'wechat' | 'alipay'): Promise<boolean> => {
+  try {
+    // 创建临时图像用于检测
+    const img = new Image()
+    
+    return new Promise((resolve) => {
+      img.onload = () => {
+        // 基础验证：检查图像尺寸和比例
+        const width = img.width
+        const height = img.height
+        
+        // 二维码应该近似正方形
+        const aspectRatio = width / height
+        const isSquare = aspectRatio >= 0.8 && aspectRatio <= 1.2
+        
+        // 最小尺寸要求
+        const isSizeValid = width >= 100 && height >= 100
+        
+        // 简单的颜色检测：二维码应该包含深色和浅色区域
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        if (!ctx) {
+          resolve(isSquare && isSizeValid)
+          return
+        }
+        
+        canvas.width = width
+        canvas.height = height
+        ctx.drawImage(img, 0, 0)
+        
+        // 采样检测图像是否为二维码
+        const samplePoints = [
+          { x: 0.2, y: 0.2 }, { x: 0.8, y: 0.2 },
+          { x: 0.2, y: 0.8 }, { x: 0.8, y: 0.8 },
+          { x: 0.5, y: 0.5 }
+        ]
+        
+        let validPoints = 0
+        samplePoints.forEach(point => {
+          const x = Math.floor(point.x * width)
+          const y = Math.floor(point.y * height)
+          const pixelData = ctx.getImageData(x, y, 1, 1).data
+          
+          // 检查像素是否为深色（二维码特征）
+          const brightness = (pixelData[0] + pixelData[1] + pixelData[2]) / 3
+          if (brightness < 128) {
+            validPoints++
+          }
+        })
+        
+        // 至少有2个深色点（二维码特征）
+        const hasQRCodeFeatures = validPoints >= 2
+        
+        resolve(isSquare && isSizeValid && hasQRCodeFeatures)
+      }
+      
+      img.onerror = () => {
+        resolve(false)
+      }
+      
+      img.src = base64Data
+    })
+    
+  } catch (error) {
+    console.error('二维码验证错误:', error)
+    return false
   }
 }
 

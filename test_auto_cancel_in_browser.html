@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试自动取消订单功能</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .button.danger:hover {
+            background: #c82333;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>测试自动取消订单功能</h1>
+        
+        <div>
+            <button class="button" onclick="testGetSettings()">1. 获取自动取消设置</button>
+            <button class="button" onclick="testPendingOrders()">2. 查看待取消订单</button>
+            <button class="button danger" onclick="testExecuteCancel()">3. 执行自动取消</button>
+            <button class="button" onclick="testRecentLogs()">4. 查看取消记录</button>
+            <button class="button" onclick="clearLog()">清空日志</button>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function clearLog() {
+            logElement.innerHTML = '';
+        }
+        
+        async function testGetSettings() {
+            log('开始获取自动取消设置...', 'info');
+            
+            try {
+                // 这里需要从你的应用导入AutoCancelService
+                // 由于在浏览器中，我们需要通过API调用
+                const response = await fetch('/api/system-settings');
+                if (!response.ok) throw new Error('获取设置失败');
+                
+                const settings = await response.json();
+                log(`✅ 自动取消时间: ${settings.orderAutoCancelMinutes} 分钟`, 'success');
+                
+            } catch (error) {
+                log(`❌ 获取设置失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testPendingOrders() {
+            log('开始查看待取消订单...', 'info');
+            
+            try {
+                // 通过API调用获取待取消订单
+                const response = await fetch('/api/auto-cancel/pending-orders');
+                if (!response.ok) throw new Error('获取待取消订单失败');
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`✅ ${result.message}`, 'success');
+                    if (result.data && result.data.length > 0) {
+                        result.data.forEach((order, index) => {
+                            const createdTime = new Date(order.created_at).toLocaleString('zh-CN');
+                            const diffMinutes = Math.floor((Date.now() - new Date(order.created_at)) / (1000 * 60));
+                            log(`   订单 ${index + 1}: ${order.title} - 创建于 ${createdTime} (${diffMinutes}分钟前)`, 'info');
+                        });
+                    } else {
+                        log('ℹ️ 没有找到待取消的订单', 'info');
+                    }
+                } else {
+                    log(`❌ ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ 获取待取消订单失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testExecuteCancel() {
+            log('开始执行自动取消...', 'info');
+            
+            try {
+                const response = await fetch('/api/auto-cancel/execute', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) throw new Error('执行自动取消失败');
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`✅ ${result.message}`, 'success');
+                    if (result.cancelledCount > 0) {
+                        log(`   取消了 ${result.cancelledCount} 个超时订单`, 'success');
+                    }
+                } else {
+                    log(`❌ ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ 执行自动取消失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testRecentLogs() {
+            log('开始查看自动取消记录...', 'info');
+            
+            try {
+                const response = await fetch('/api/auto-cancel/logs');
+                if (!response.ok) throw new Error('获取日志失败');
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log(`✅ 找到 ${result.data?.length || 0} 条记录`, 'success');
+                    if (result.data && result.data.length > 0) {
+                        result.data.slice(0, 5).forEach((logEntry, index) => {
+                            const time = new Date(logEntry.created_at).toLocaleString('zh-CN');
+                            log(`   记录 ${index + 1}: [${time}] ${logEntry.action} - ${logEntry.description}`, 'info');
+                        });
+                    }
+                } else {
+                    log(`❌ ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ 获取日志失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 初始化日志
+        log('自动取消订单功能测试页面已加载', 'info');
+        log('请先确保你的应用正在运行，然后点击按钮进行测试', 'info');
+    </script>
+</body>
+</html>

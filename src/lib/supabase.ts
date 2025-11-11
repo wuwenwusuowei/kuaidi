@@ -35,5 +35,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'implicit' // 使用隐式流程避免邮箱验证
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'kuaidi2-admin'
+    }
+  },
+  db: {
+    schema: 'public'
+  },
+  // 添加超时和重试配置
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 })

@@ -152,6 +152,7 @@ const chatTitle = computed(() => {
 // 生命周期
 onMounted(async () => {
   await loadMessages()
+  setupRealtimeSubscription()
   startPolling()
 })
 

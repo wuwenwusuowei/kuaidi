@@ -1,45 +1,50 @@
-// 测试超时自动取消订单功能 - 简化版
-const { exec } = require('child_process');
+// 简单的自动取消功能测试脚本
+// 在浏览器控制台中运行
 
+console.log('🎯 自动取消功能测试开始...');
+
+// 测试函数
 async function testAutoCancel() {
-  console.log('=== 开始测试超时自动取消订单功能 ===\n');
-
-  try {
-    // 1. 检查项目是否正在运行
-    console.log('1. 检查项目状态...');
-    
-    // 2. 创建测试订单
-    console.log('2. 创建测试订单...');
-    
-    // 3. 手动调用自动取消服务
-    console.log('3. 调用自动取消服务...');
-    
-    // 使用 axios 或其他 HTTP 客户端调用 API
-    const response = await fetch('http://localhost:5173/api/auto-cancel', {
-      method: 'POST'
-    });
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log('✅ 自动取消执行成功:', result);
-    } else {
-      console.log('❌ 自动取消执行失败:', response.statusText);
+    try {
+        console.log('1️⃣ 检查 AutoCancelService 是否可用...');
+        
+        // 检查服务是否已加载
+        if (typeof AutoCancelService === 'undefined') {
+            console.error('❌ AutoCancelService 未定义，请刷新页面重试');
+            return;
+        }
+        
+        console.log('✅ AutoCancelService 可用');
+        
+        // 2. 查看待取消订单
+        console.log('\n2️⃣ 查看待取消订单...');
+        try {
+            const pendingOrders = await AutoCancelService.getPendingAutoCancelOrders();
+            console.log(`📋 找到 ${pendingOrders.length} 个待取消订单:`);
+            pendingOrders.forEach((order, index) => {
+                console.log(`   ${index + 1}. ${order.order_number} - ${order.description} (${order.status})`);
+            });
+        } catch (error) {
+            console.log('⚠️ 获取待取消订单失败，可能没有符合条件的订单');
+        }
+        
+        // 3. 执行自动取消
+        console.log('\n3️⃣ 执行自动取消...');
+        try {
+            const result = await AutoCancelService.executeAutoCancel();
+            console.log('✅ 自动取消执行结果:', result);
+        } catch (error) {
+            console.error('❌ 自动取消执行失败:', error.message || error);
+        }
+        
+        console.log('\n🎉 测试完成！');
+        
+    } catch (error) {
+        console.error('❌ 测试过程中出现错误:', error);
     }
-    
-  } catch (error) {
-    console.log('❌ 测试过程中发生错误:', error.message);
-    
-    // 测试直接调用数据库函数
-    console.log('\n4. 尝试直接执行数据库函数...');
-    
-    // 这里可以添加直接调用数据库函数的代码
-    console.log('ℹ️ 需要先确保数据库连接配置正确');
-  }
-
-  console.log('\n=== 测试完成 ===');
 }
 
-// 运行测试
-testAutoCancel().catch(error => {
-  console.error('测试过程中发生错误:', error);
-});
+// 添加到全局作用域
+window.testAutoCancel = testAutoCancel;
+
+console.log('🚀 测试函数已加载，在控制台中输入: testAutoCancel()');
