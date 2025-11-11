@@ -51,11 +51,11 @@
         style="width: 100%"
         :default-sort="{ prop: 'created_at', order: 'descending' }"
       >
-        <el-table-column prop="order_number" label="订单号" width="120" />
+        <el-table-column prop="order_number" label="订单号" width="100" />
         
-        <el-table-column prop="tracking_number" label="快递单号" width="150" />
+        <el-table-column prop="tracking_number" label="快递单号" width="140" />
         
-        <el-table-column prop="requester.username" label="发布者" width="120">
+        <el-table-column prop="requester.username" label="发布者" width="100">
           <template #default="{ row }">
             <div class="user-info">
               <el-avatar :size="32" :src="row.requester?.avatar_url" :alt="row.requester?.username">
@@ -66,7 +66,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="deliverer.username" label="接单者" width="120">
+        <el-table-column prop="deliverer.username" label="接单者" width="100">
           <template #default="{ row }">
             <div v-if="row.deliverer" class="user-info">
               <el-avatar :size="32" :src="row.deliverer?.avatar_url" :alt="row.deliverer?.username">
@@ -78,15 +78,15 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="price" label="金额" width="100">
+        <el-table-column prop="price" label="金额" width="80">
           <template #default="{ row }">
             ¥{{ row.price }}
           </template>
         </el-table-column>
         
-        <el-table-column prop="status" label="状态" width="120">
+        <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
+            <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
@@ -96,13 +96,13 @@
         
         <el-table-column prop="delivery_location" label="送达地点" min-width="150" show-overflow-tooltip />
         
-        <el-table-column prop="created_at" label="创建时间" width="160" sortable>
+        <el-table-column prop="created_at" label="创建时间" width="200" sortable>
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="viewOrderDetail(row)">
               详情
