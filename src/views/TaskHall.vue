@@ -144,7 +144,7 @@
                   <span>联系电话：{{ task.contactPhone }}</span>
                 </div>
                 <div class="meta-item">
-                  <span>发布者：{{ task.requesterName || '用户' }}</span>
+                  <span>发布者：{{ formatRequesterName(task.requesterId) }}</span>
                 </div>
               </div>
             </div>
@@ -259,7 +259,7 @@
             <span class="detail-price">¥{{ selectedTask.price.toFixed(2) }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="发布者">
-            {{ selectedTask.requesterName || '用户' }}
+            {{ formatRequesterName(selectedTask.requesterId) }}
           </el-descriptions-item>
         </el-descriptions>
       </div>
@@ -533,6 +533,19 @@ const handleAcceptTask = async (taskId?: string) => {
   } finally {
     acceptingTaskId.value = null
   }
+}
+
+// 格式化发布者名称
+const formatRequesterName = (requesterId: string) => {
+  if (!requesterId) return '用户'
+  
+  // 如果是当前用户自己发布的订单
+  if (authStore.user && requesterId === authStore.user.id) {
+    return authStore.user.username || '我'
+  }
+  
+  // 显示用户ID的前几位作为标识（实际项目中应该从用户服务获取用户名）
+  return `用户${requesterId.substring(0, 6)}`
 }
 
 // 初始化加载任务列表
