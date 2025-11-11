@@ -10,8 +10,94 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = ref(false)
   const loading = ref(false)
 
-  // 模拟用户数据（开发阶段备用）
-  const mockUsers = []
+  // 获取当前标签页的唯一标识符（使用sessionStorage保存）
+  const getCurrentTabId = (): string => {
+    // 首先尝试从sessionStorage获取现有的标签页ID
+    let tabId = sessionStorage.getItem('current_tab_id')
+    
+    if (!tabId) {
+      // 生成新的标签页ID
+      tabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      
+      // 保存到sessionStorage中
+      sessionStorage.setItem('current_tab_id', tabId)
+      
+      console.log('为新标签页生成ID:', tabId)
+    }
+    
+    return tabId
+  }
+
+  // 生成会话存储的键名（标签页隔离）
+  const getSessionKey = (key: string): string => {
+    const tabId = getCurrentTabId()
+    return `${tabId}_${key}`
+  }
+
+  // 从sessionStorage同步到Pinia状态
+  const syncStateFromStorage = () => {
+    try {
+      const userData = sessionStorage.getItem(getSessionKey('auth_user'))
+      const isAuthenticatedData = sessionStorage.getItem(getSessionKey('is_authenticated'))
+      const isAdminData = sessionStorage.getItem(getSessionKey('is_admin'))
+      
+      // 优先使用用户数据来判断认证状态
+      if (userData) {
+        user.value = JSON.parse(userData)
+        isAuthenticated.value = true
+        console.log('从存储恢复用户会话:', user.value?.username)
+      } else {
+        // 如果没有用户数据，则根据认证状态数据来设置
+        if (isAuthenticatedData) {
+          isAuthenticated.value = JSON.parse(isAuthenticatedData)
+        }
+      }
+      
+      if (isAdminData) {
+        isAdmin.value = JSON.parse(isAdminData)
+      }
+      
+      console.log('状态同步完成:', { 
+        hasUser: !!user.value, 
+        isAuthenticated: isAuthenticated.value,
+        isAdmin: isAdmin.value 
+      })
+    } catch (error) {
+      console.warn('从存储同步状态失败:', error)
+    }
+  }
+
+  // 同步Pinia状态到sessionStorage
+  const syncStateToStorage = () => {
+    try {
+      if (user.value) {
+        sessionStorage.setItem(getSessionKey('auth_user'), JSON.stringify(user.value))
+        sessionStorage.setItem(getSessionKey('is_authenticated'), JSON.stringify(true))
+        sessionStorage.setItem(getSessionKey('is_admin'), JSON.stringify(isAdmin.value))
+        console.log('保存用户会话到存储:', user.value.username)
+      } else {
+        // 清除所有认证相关的存储数据
+        sessionStorage.removeItem(getSessionKey('auth_user'))
+        sessionStorage.removeItem(getSessionKey('is_authenticated'))
+        sessionStorage.removeItem(getSessionKey('is_admin'))
+        
+        // 清除标签页ID（完全清理会话）
+        sessionStorage.removeItem('current_tab_id')
+        
+        console.log('清除用户会话')
+      }
+    } catch (error) {
+      console.warn('保存状态到存储失败:', error)
+    }
+  }
+
+  // 初始化会话管理
+  const initSessionManagement = () => {
+    // 首次加载时从存储同步状态
+    syncStateFromStorage()
+    
+    console.log('会话管理已初始化，当前标签页ID:', getCurrentTabId())
+  }
 
   // 用户登录
   const login = async (username: string, password: string) => {
@@ -22,7 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (result.success && result.data) {
         user.value = result.data
         isAuthenticated.value = true
-        localStorage.setItem('auth_user', JSON.stringify(result.data))
+        syncStateToStorage() // 同步到存储
         
         // 更新在线状态
         try {
@@ -31,6 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
           console.warn('更新在线状态失败:', error)
         }
         
+        console.log('登录成功，用户:', result.data.username)
         return { success: true }
       } else {
         throw new Error(result.error || '登录失败')
@@ -57,15 +144,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 用户注册
-  const register = async (username: string, password: string, nickname: string, phone?: string) => {
+  const register = async (username: string, password: string, nickname: string, campus?: string) => {
     loading.value = true
     try {
-      const result = await AuthService.register({ username, password, nickname, phone })
+      const result = await AuthService.register({ username, password, nickname, campus })
       
       if (result.success && result.data) {
         user.value = result.data
         isAuthenticated.value = true
-        localStorage.setItem('auth_user', JSON.stringify(result.data))
+        syncStateToStorage() // 同步到存储
         
         // 更新在线状态
         try {
@@ -74,6 +161,7 @@ export const useAuthStore = defineStore('auth', () => {
           console.warn('更新在线状态失败:', error)
         }
         
+        console.log('注册成功，用户:', result.data.username)
         return { success: true }
       } else {
         throw new Error(result.error || '注册失败')
@@ -81,7 +169,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (error: any) {
       // 如果数据库注册失败，回退到模拟数据
       console.warn('数据库注册失败，使用模拟数据:', error.message)
-      return await fallbackRegister({ username, password, nickname, phone })
+      return await fallbackRegister({ username, password, nickname, campus })
     } finally {
       loading.value = false
     }
@@ -89,36 +177,24 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 模拟注册（开发阶段备用）
   const fallbackRegister = async (form: RegisterForm) => {
-    // 检查用户名是否已存在
-    if (mockUsers.some(u => u.username === form.username)) {
-      throw new Error('用户名已存在')
-    }
-    
-    // 检查手机号是否已存在
-    if (form.phone && mockUsers.some(u => u.phone === form.phone)) {
-      throw new Error('手机号已被使用')
-    }
-    
-    // 模拟注册成功
+    // 简单的模拟注册逻辑
     const newUser: User = {
       id: Date.now().toString(),
       username: form.username,
       nickname: form.nickname,
       avatar_url: '',
       balance: 0.00,
-      phone: form.phone || '',
-      phone_verified: form.phone ? true : false,
       email: '',
       campus: form.campus || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
     
-    mockUsers.push(newUser)
     user.value = newUser
     isAuthenticated.value = true
-    localStorage.setItem('auth_user', JSON.stringify(newUser))
+    syncStateToStorage() // 同步到存储
     
+    console.log('模拟注册成功，用户:', newUser.username)
     return { success: true }
   }
 
@@ -130,22 +206,15 @@ export const useAuthStore = defineStore('auth', () => {
       if (result.success && result.data) {
         user.value = result.data
         isAuthenticated.value = true
+        syncStateToStorage() // 同步到存储
       } else {
-        // 回退到本地存储检查
-        const savedUser = localStorage.getItem('auth_user')
-        if (savedUser) {
-          user.value = JSON.parse(savedUser)
-          isAuthenticated.value = true
-        }
+        // 如果后端检查失败，回退到存储检查
+        syncStateFromStorage()
       }
     } catch (error) {
       console.warn('检查认证状态失败:', error)
-      // 回退到本地存储检查
-      const savedUser = localStorage.getItem('auth_user')
-      if (savedUser) {
-        user.value = JSON.parse(savedUser)
-        isAuthenticated.value = true
-      }
+      // 回退到存储检查
+      syncStateFromStorage()
     }
   }
 
@@ -169,15 +238,18 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     isAuthenticated.value = false
     isAdmin.value = false
-    localStorage.removeItem('auth_user')
-    localStorage.removeItem('is_admin')
+    
+    // 从存储中清除数据
+    syncStateToStorage()
+    
+    console.log('用户已登出')
   }
 
   // 更新用户信息
   const updateUser = (userInfo: Partial<User>) => {
     if (user.value) {
       user.value = { ...user.value, ...userInfo }
-      localStorage.setItem('auth_user', JSON.stringify(user.value))
+      syncStateToStorage() // 同步到存储
     }
   }
 
@@ -189,24 +261,25 @@ export const useAuthStore = defineStore('auth', () => {
   // 管理员权限管理
   const setAdmin = (admin: boolean) => {
     isAdmin.value = admin
-    if (admin) {
-      localStorage.setItem('is_admin', 'true')
-    } else {
-      localStorage.removeItem('is_admin')
-    }
+    syncStateToStorage() // 同步到存储
   }
 
   // 检查管理员权限
   const checkAdmin = () => {
-    const savedAdmin = localStorage.getItem('is_admin')
-    isAdmin.value = savedAdmin === 'true'
+    syncStateFromStorage() // 从存储同步状态
     return isAdmin.value
   }
 
   // 初始化时检查管理员权限
   const initAuth = () => {
+    // 初始化会话管理
+    initSessionManagement()
+    
+    // 检查认证状态
     checkAuth()
     checkAdmin()
+    
+    console.log('认证系统已初始化，当前标签页ID:', getCurrentTabId())
   }
 
   return {
