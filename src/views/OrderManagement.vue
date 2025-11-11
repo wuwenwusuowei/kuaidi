@@ -1832,4 +1832,132 @@ const viewDetails = (order: Order) => {
     padding: 10px;
   }
 }
+
+/* 支付对话框样式 */
+.payment-dialog {
+  padding: 0 20px;
+}
+
+.payment-status {
+  margin-bottom: 20px;
+}
+
+.qr-code-section {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.qr-code-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.qr-code {
+  width: 200px;
+  height: 200px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 200px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.loading-icon {
+  font-size: 24px;
+  color: #667eea;
+  animation: spin 1s linear infinite;
+}
+
+.qr-code-tip {
+  font-size: 14px;
+  color: #666;
+  margin: 8px 0;
+}
+
+.payment-amount {
+  font-size: 18px;
+  font-weight: bold;
+  color: #e74c3c;
+  margin: 8px 0;
+}
+
+.payment-note {
+  font-size: 12px;
+  color: #999;
+  margin: 8px 0;
+}
+
+.deliverer-info {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: left;
+  margin-top: 16px;
+}
+
+.deliverer-info h4 {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.deliverer-info p {
+  margin: 8px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.contact-tip {
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+
+.payment-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.payment-success {
+  text-align: center;
+  margin: 20px 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 响应式支付对话框 */
+@media (max-width: 768px) {
+  .qr-code {
+    width: 180px;
+    height: 180px;
+  }
+  
+  .qr-code-container {
+    gap: 12px;
+  }
+  
+  .payment-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+}
 </style>
